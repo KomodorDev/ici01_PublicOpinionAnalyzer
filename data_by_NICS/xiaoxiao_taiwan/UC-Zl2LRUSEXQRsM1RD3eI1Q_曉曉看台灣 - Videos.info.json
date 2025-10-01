@@ -1,1 +1,93 @@
-{"id": "UC-Zl2LRUSEXQRsM1RD3eI1Q", "channel": "曉曉看台灣", "channel_id": "UC-Zl2LRUSEXQRsM1RD3eI1Q", "title": "曉曉看台灣 - Videos", "channel_follower_count": 2660, "description": "", "tags": [], "thumbnails": [{"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 175, "width": 1060, "preference": -10, "id": "0", "resolution": "1060x175"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 188, "width": 1138, "preference": -10, "id": "1", "resolution": "1138x188"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1707-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 283, "width": 1707, "preference": -10, "id": "2", "resolution": "1707x283"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2120-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 351, "width": 2120, "preference": -10, "id": "3", "resolution": "2120x351"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2276-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 377, "width": 2276, "preference": -10, "id": "4", "resolution": "2276x377"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj", "height": 424, "width": 2560, "preference": -10, "id": "5", "resolution": "2560x424"}, {"url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=s0", "id": "banner_uncropped", "preference": -5}, {"url": "https://yt3.googleusercontent.com/pM3pUUQnIHJ_Q44tpztrIQSUUvF1Mng0KUluKt1zTMGWiI4rYGSE-zungea17ilUceQ66S_I_g=s900-c-k-c0x00ffffff-no-rj", "height": 900, "width": 900, "id": "7", "resolution": "900x900"}, {"url": "https://yt3.googleusercontent.com/pM3pUUQnIHJ_Q44tpztrIQSUUvF1Mng0KUluKt1zTMGWiI4rYGSE-zungea17ilUceQ66S_I_g=s0", "id": "avatar_uncropped", "preference": 1}], "uploader_id": "@曉曉看台灣", "uploader_url": "https://www.youtube.com/@曉曉看台灣", "playlist_count": 21, "uploader": "曉曉看台灣", "channel_url": "https://www.youtube.com/channel/UC-Zl2LRUSEXQRsM1RD3eI1Q", "_type": "playlist", "extractor_key": "YoutubeTab", "extractor": "youtube:tab", "webpage_url": "https://www.youtube.com/@曉曉看台灣/videos", "webpage_url_basename": "videos", "webpage_url_domain": "youtube.com", "epoch": 1759211700, "_version": {"version": "2025.06.09", "release_git_head": "339614a173c74b42d63e858c446a9cae262a13af", "repository": "yt-dlp/yt-dlp"}}
+{
+    "id": "UC-Zl2LRUSEXQRsM1RD3eI1Q",
+    "channel": "曉曉看台灣",
+    "channel_id": "UC-Zl2LRUSEXQRsM1RD3eI1Q",
+    "title": "曉曉看台灣 - Videos",
+    "channel_follower_count": 2660,
+    "description": "",
+    "tags": [],
+    "thumbnails": [
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1060-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 175,
+            "width": 1060,
+            "preference": -10,
+            "id": "0",
+            "resolution": "1060x175"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1138-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 188,
+            "width": 1138,
+            "preference": -10,
+            "id": "1",
+            "resolution": "1138x188"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w1707-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 283,
+            "width": 1707,
+            "preference": -10,
+            "id": "2",
+            "resolution": "1707x283"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2120-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 351,
+            "width": 2120,
+            "preference": -10,
+            "id": "3",
+            "resolution": "2120x351"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2276-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 377,
+            "width": 2276,
+            "preference": -10,
+            "id": "4",
+            "resolution": "2276x377"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj",
+            "height": 424,
+            "width": 2560,
+            "preference": -10,
+            "id": "5",
+            "resolution": "2560x424"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/QJmdoI5avoQdFENVUFFJxEtV_TCwvcOwpbN0QRNgysP6x2EtUr4SVYznS9Q27vc-wxih5th_pmg=s0",
+            "id": "banner_uncropped",
+            "preference": -5
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/pM3pUUQnIHJ_Q44tpztrIQSUUvF1Mng0KUluKt1zTMGWiI4rYGSE-zungea17ilUceQ66S_I_g=s900-c-k-c0x00ffffff-no-rj",
+            "height": 900,
+            "width": 900,
+            "id": "7",
+            "resolution": "900x900"
+        },
+        {
+            "url": "https://yt3.googleusercontent.com/pM3pUUQnIHJ_Q44tpztrIQSUUvF1Mng0KUluKt1zTMGWiI4rYGSE-zungea17ilUceQ66S_I_g=s0",
+            "id": "avatar_uncropped",
+            "preference": 1
+        }
+    ],
+    "uploader_id": "@曉曉看台灣",
+    "uploader_url": "https://www.youtube.com/@曉曉看台灣",
+    "playlist_count": 21,
+    "uploader": "曉曉看台灣",
+    "channel_url": "https://www.youtube.com/channel/UC-Zl2LRUSEXQRsM1RD3eI1Q",
+    "_type": "playlist",
+    "extractor_key": "YoutubeTab",
+    "extractor": "youtube:tab",
+    "webpage_url": "https://www.youtube.com/@曉曉看台灣/videos",
+    "webpage_url_basename": "videos",
+    "webpage_url_domain": "youtube.com",
+    "epoch": 1759211700,
+    "_version": {
+        "version": "2025.06.09",
+        "release_git_head": "339614a173c74b42d63e858c446a9cae262a13af",
+        "repository": "yt-dlp/yt-dlp"
+    }
+}
