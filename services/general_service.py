@@ -87,4 +87,3 @@ class GeneralService:
         neg = analysis_result.get("negative", 0)
         total = analysis_result.get("total_comments", 0)
         return f"Out of {total} comments: {pos} positive, {neg} negative."
-
