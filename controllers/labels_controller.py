@@ -1,0 +1,1 @@
+# Handles "Label Groups" tab
