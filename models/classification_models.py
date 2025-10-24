@@ -31,7 +31,7 @@ ClassificationOutputType = Literal[
     "text"            # open string
 ]
 
-
+##################################################################
 @dataclass
 class Classification:
     """
@@ -43,7 +43,7 @@ class Classification:
     or free‑form text.
 
     Attributes:
-        id (str): Unique identifier for this classification.
+        name (str): Unique identifier for this classification.
         question (str): The question or task prompt to guide analysis.
         output_type (ClassificationOutputType): Specifies the kind of expected label.
             - 'boolean' → True / False / None
@@ -57,7 +57,7 @@ class Classification:
         categories (Optional[list[str]]): Allowed category values if output_type=='categorical'.
     """
 
-    id: str
+    name: str
     question: str
     output_type: ClassificationOutputType = "boolean"
     pro_indicators: List[str] = field(default_factory=list)
@@ -65,7 +65,7 @@ class Classification:
     neutral_indicators: List[str] = field(default_factory=list)
     categories: Optional[List[str]] = None  # e.g. ["pro", "neutral", "anti"]
 
-
+##################################################################
 @dataclass
 class ClassificationGroup:
     """
@@ -77,14 +77,13 @@ class ClassificationGroup:
     "Is the comment pro‑Taiwan?" and "Is the comment anti‑China?".
 
     Attributes:
-        id (str):
-            Unique identifier for this group.
         name (str):
-            Human-readable title of the group.
+            Unique Human-readable title of the group.
         classifications (list[Classification]):
             A list of `Classification` instances that belong to this group.
     """
 
-    id: str
     name: str
     classifications: List[Classification] = field(default_factory=list)
+
+##################################################################
