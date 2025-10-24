@@ -1,1 +1,0 @@
-# Structures label group definitions
