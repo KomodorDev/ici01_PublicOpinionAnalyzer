@@ -1,0 +1,16 @@
+{
+  "name": "pro_taiwan",
+  "question": "Is the comment pro‑Taiwan?",
+  "output_type": "boolean",
+  "pro_indicators": [
+    "Taiwan is a free country",
+    "Support Taiwan democracy"
+  ],
+  "con_indicators": [
+    "China should control Taiwan",
+    "Taiwan isn't independent"
+  ],
+  "neutral_indicators": [
+    "Neutral reporting about Taiwan"
+  ]
+}
