@@ -205,7 +205,7 @@ class ClassificationRepository:
 
         Args:
             group_name: The name of the group (folder) under 'Classifications/'.
-            classification_id: The file name prefix (without .json).
+            classification_name: The file name prefix (without .json).
         """
         group_path = os.path.join(self.base_path, group_name)
         file_path = os.path.join(group_path, f"{classification_name}.json")
