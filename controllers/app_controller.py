@@ -1,12 +1,13 @@
 # controllers/app_controller.py
 import gradio as gr
 from controllers.general_controller import GeneralController
+from controllers.classification_controller import ClassificationController
 # Future controllers can be implemented later:
-# from controllers.label_controller import LabelController
 # from controllers.prompt_controller import PromptController
 # from controllers.advanced_controller import AdvancedController
 
 
+##################################################################
 class AppController:
     """
     Main application controller that orchestrates startup and manages all top‑level Gradio tabs.
@@ -16,6 +17,7 @@ class AppController:
     delegating layout rendering and event wiring responsibilities to their respective controllers.
     """
 
+    # ----------------------------------------------------------------
     def __init__(self) -> None:
         """
         Initialize the application's sub‑controllers.
@@ -24,12 +26,14 @@ class AppController:
         across modules according to the MVC (Model–View–Controller) pattern.
         """
         self.general_controller = GeneralController()
+        self.classification_controller = ClassificationController()
 
         # Placeholder: initialize other controllers when they are implemented
-        # self.label_controller = LabelController()
+
         # self.prompt_controller = PromptController()
         # self.advanced_controller = AdvancedController()
 
+    # ----------------------------------------------------------------
     def launch(self) -> None:
         """
         Start and launch the Gradio‑based interface.
@@ -43,10 +47,9 @@ class AppController:
             with gr.Tab("General"):
                 self.general_controller.render_general_view()
 
-            # Label Manager tab --------------------------------------------------------------
-            with gr.Tab("Label Manager"):
-                gr.Markdown("### Label Manager (Coming Soon)")
-                gr.Textbox(label="Manage label groups here.")
+            # Classification Manager tab --------------------------------------------------------------
+            with gr.Tab("Classification Manager"):
+                self.classification_controller.render_classification_view()
 
             # Prompt Manager tab -------------------------------------------------------------
             with gr.Tab("Prompt Manager"):
@@ -64,3 +67,7 @@ class AppController:
                 )
 
         demo.launch()
+
+    # ----------------------------------------------------------------
+
+##################################################################
