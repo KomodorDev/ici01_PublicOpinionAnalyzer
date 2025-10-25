@@ -17,4 +17,4 @@ class GeneralController:
         # Available Models
         # Available Label Groups
 
-        self.general_view.render_general_layout()
+        self.general_view.render_general_view()

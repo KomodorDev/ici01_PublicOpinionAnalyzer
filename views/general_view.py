@@ -4,7 +4,7 @@ import gradio as gr
 class GeneralView:
     """Defines the Gradio layout for the General tab."""
 
-    def render_general_layout(self):
+    def render_general_view(self):
         """
         Builds the Gradio components for the General tab.
 
