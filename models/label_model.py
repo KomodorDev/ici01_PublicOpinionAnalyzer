@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 
+
+##################################################################
 @dataclass
 class Label:
     """
@@ -14,3 +16,5 @@ class Label:
     value: Optional[Union[bool, float, str, dict]] = None
     confidence: Optional[float] = None
     assigned_by: str = "LLM"
+    
+##################################################################
