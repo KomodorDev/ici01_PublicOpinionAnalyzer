@@ -58,7 +58,7 @@ class YouTubeFetcher(ContentFetcher):
             "--write-comments",
             "--extractor-args", "youtube:comment_sort=top",
             "--extractor-args", "youtube:max_comments=all,all,all,all",
-            "--sleep-requests", "1",                       # Pause 3s between HTTP requests
+            "--sleep-requests", "1",                       # Pause 1s between HTTP requests
             "--limit-rate", "3M",                          # Max transfer rate
             "-o", output_template,
             url,
