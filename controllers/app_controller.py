@@ -2,6 +2,7 @@
 import gradio as gr
 from controllers.general_controller import GeneralController
 from controllers.classification_controller import ClassificationController
+from controllers.settings_controller import SettingsController
 # Future controllers can be implemented later:
 # from controllers.prompt_controller import PromptController
 # from controllers.advanced_controller import AdvancedController
@@ -27,6 +28,7 @@ class AppController:
         """
         self.general_controller = GeneralController()
         self.classification_controller = ClassificationController()
+        self.settings_controller = SettingsController()
 
         # Placeholder: initialize other controllers when they are implemented
 
@@ -58,14 +60,8 @@ class AppController:
 
             # Advanced Settings tab ----------------------------------------------------------
             with gr.Tab("Advanced Settings"):
-                gr.Markdown("### Advanced Settings (Coming Soon)")
-                gr.Slider(
-                    minimum=0,
-                    maximum=1,
-                    step=0.1,
-                    label="Example setting slider (placeholder)"
-                )
-
+                # Embed the full password‑locked settings view
+                self.settings_controller.render_settings_view()
         demo.launch()
 
     # ----------------------------------------------------------------
