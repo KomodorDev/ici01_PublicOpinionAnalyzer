@@ -6,6 +6,7 @@ youtube_fetcher.py
 Fetches video metadata and comments from YouTube.
 """
 
+
 import os
 import sys
 import json
@@ -66,7 +67,7 @@ class YouTubeFetcher(ContentFetcher):
         # Running yt-dlp:
         print(f"Running yt-dlp for {url} ...")
         try:
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            _result = subprocess.run(command, capture_output=True, text=True, check=True)
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
                 f"yt-dlp failed with exit code {e.returncode}: {e.stderr}"
@@ -158,7 +159,8 @@ class YouTubeFetcher(ContentFetcher):
         # Return
         return ContentAnalysis(content=content, comments=comments)
 
-    # ----------------------------------------------------------------
+##################################################################
+
 def main():
     """Main"""
     default_url = "https://www.youtube.com/watch?v=F7MkGWRR3XI"
@@ -188,7 +190,5 @@ def main():
 
     print(f"\nTotal comments fetched: {len(result.comments)}")
 
-
 if __name__ == "__main__":
     main()
-##################################################################
