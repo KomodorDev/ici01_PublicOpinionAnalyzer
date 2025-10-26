@@ -8,11 +8,11 @@ Google AI (Gemini) provider implementation.
 
 from typing import List
 from google import genai
-from services.model_providers.base_provider import LLMProvider, ModelInfo
+from services.model_providers.base_provider import ModelProvider, ModelInfo
 
 
 ##################################################################
-class GoogleAIProvider(LLMProvider):
+class GoogleAIProvider(ModelProvider):
     """Manages Google AI (Gemini) models."""
 
     # ----------------------------------------------------------------

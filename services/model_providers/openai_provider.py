@@ -8,11 +8,11 @@ OpenAI provider implementation.
 
 from typing import List
 from openai import OpenAI
-from services.model_providers.base_provider import LLMProvider, ModelInfo
+from services.model_providers.base_provider import ModelProvider, ModelInfo
 
 
 ##################################################################
-class OpenAIProvider(LLMProvider):
+class OpenAIProvider(ModelProvider):
     """Manages OpenAI models and API integration."""
 
     # ----------------------------------------------------------------
