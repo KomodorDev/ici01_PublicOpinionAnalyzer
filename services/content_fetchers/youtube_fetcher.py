@@ -159,6 +159,8 @@ class YouTubeFetcher(ContentFetcher):
         # Return
         return ContentAnalysis(content=content, comments=comments)
 
+    # ----------------------------------------------------------------
+
 ##################################################################
 
 def main():
