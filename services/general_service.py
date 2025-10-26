@@ -11,14 +11,17 @@ and providing results back to controllers.
 from typing import Any, Dict, List
 
 
+##################################################################
 class GeneralService:
     """Mock business logic layer for the General tab."""
 
+    # ----------------------------------------------------------------
     def __init__(self) -> None:
         """Initialize mock attributes like data cache or configuration."""
         self.cache: Dict[str, Any] = {}
         print("GeneralService initialized (mock).")
 
+    # ----------------------------------------------------------------
     def analyze_comments(self, comments: List[str]) -> Dict[str, Any]:
         """
         Mock comment analysis.
@@ -46,6 +49,7 @@ class GeneralService:
             ],
         }
 
+    # ----------------------------------------------------------------
     def fetch_data(self, source_url: str) -> List[str]:
         """
         Mock method to simulate fetching raw comment data.
@@ -68,6 +72,7 @@ class GeneralService:
             "Not my favorite content.",
         ]
 
+    # ----------------------------------------------------------------
     def summarize_results(self, analysis_result: Dict[str, Any]) -> str:
         """
         Summarize the result of the mock analysis.
@@ -87,3 +92,7 @@ class GeneralService:
         neg = analysis_result.get("negative", 0)
         total = analysis_result.get("total_comments", 0)
         return f"Out of {total} comments: {pos} positive, {neg} negative."
+
+    # ----------------------------------------------------------------
+
+##################################################################
