@@ -75,13 +75,15 @@ class ModelService:
     def get_providers(self) -> List[str]:
         """Get list of configured provider names."""
         return list(self.providers.keys())
-    
+
     # ----------------------------------------------------------------
     def is_lmstudio_connected(self) -> bool:
         """Check if LM Studio is running and responding."""
         provider = self.providers.get("lmstudio")
         if not provider:
             return False
+        
+        # We call on LM_Studio provider to check availability
         return provider.is_available()
 
     # ----------------------------------------------------------------
