@@ -29,10 +29,10 @@ class OpenAIProvider(ModelProvider):
             List of ModelInfo objects for available models.
         """
         models = []
-        
+
         # Fetch models from OpenAI API
         response = self.client.models.list()
-        
+
         for model in response.data:
             # Filter to chat/completion models only
             if any(keyword in model.id for keyword in ["gpt-", "o1-", "chatgpt"]):
@@ -45,14 +45,14 @@ class OpenAIProvider(ModelProvider):
                     supports_vision="vision" in model.id or "4o" in model.id
                 )
                 models.append(model_info)
-        
+
         return sorted(models, key=lambda x: x.id)
 
     # ----------------------------------------------------------------
     def get_model_info(self, model_id: str) -> ModelInfo:
         """Get detailed info about a specific OpenAI model."""
         model = self.client.models.retrieve(model_id)
-        
+
         return ModelInfo(
             id=model.id,
             name=model.id,

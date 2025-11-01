@@ -36,7 +36,7 @@ class ModelProvider(ABC):
         Default: returns True (for API-managed models).
         """
         return True
-    
+
     # ----------------------------------------------------------------
     @abstractmethod
     def list_models(self) -> List[ModelInfo]:

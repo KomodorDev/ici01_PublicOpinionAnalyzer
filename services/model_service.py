@@ -23,7 +23,7 @@ class ModelService:
     # ----------------------------------------------------------------
     def __init__(self, openai_key: Optional[str] = None, google_key: Optional[str] = None):
         self.providers: Dict[str, ModelProvider] = {}
-        
+
         # Register available providers
         if openai_key:
             self.providers["openai"] = OpenAIProvider(openai_key)
@@ -82,7 +82,7 @@ class ModelService:
         provider = self.providers.get("lmstudio")
         if not provider:
             return False
-        
+
         # We call on LM_Studio provider to check availability
         return provider.is_available()
 
