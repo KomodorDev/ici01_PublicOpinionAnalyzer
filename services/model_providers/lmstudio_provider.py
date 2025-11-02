@@ -75,7 +75,8 @@ class LMStudioProvider(ModelProvider):
         Returns:
             List[ModelInfo]: List of available models from LM Studio.
         """
-        if not self.test_connection():
+        success, _ = self.test_connection()
+        if not success:
             return []
 
         try:
@@ -169,8 +170,10 @@ def main():
     # Test availability
     print("\n" + "-" * 60)
     print("Checking availability...")
-    is_available = provider.test_connection()
+    is_available, message = provider.test_connection()
     print(f"LM Studio available: {is_available}")
+    if message:
+        print(f"Connection message: {message}")
 
     if not is_available:
         print("\n⚠️  LM Studio is not running on the provided address!")

@@ -74,7 +74,8 @@ class OpenAIProvider(ModelProvider):
     # ----------------------------------------------------------------
     def list_models(self) -> List[ModelInfo]:
         """List all available OpenAI models."""
-        if not self.test_connection():
+        success, _ = self.test_connection()
+        if not success:
             return []
 
         try:
@@ -160,8 +161,10 @@ def main():
 
     # Check API key and availability
     print("Checking availability...")
-    available = provider.test_connection()
+    available, message = provider.test_connection()
     print(f"Is available: {available}")
+    if message:
+        print(f"Message: {message}")
 
     if not available:
         print("\n⚠️  OpenAI API key not configured!")
