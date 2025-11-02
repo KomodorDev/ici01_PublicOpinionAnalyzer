@@ -65,7 +65,7 @@ class PromptController:
         Create or update a prompt.
         
         Args:
-            name: Prompt name (without .txt extension)
+            name: Prompt name (without .json extension)
             content: Prompt content
             
         Returns:
@@ -79,7 +79,7 @@ class PromptController:
         Delete a prompt.
         
         Args:
-            name: Prompt name (without .txt extension)
+            name: Prompt name (without .json extension)
             
         Returns:
             Tuple of (success: bool, message: str)

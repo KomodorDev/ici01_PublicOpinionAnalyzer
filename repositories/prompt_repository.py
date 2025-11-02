@@ -105,18 +105,18 @@ class PromptRepository:
             # We iterate over all files in the group folder:
             for file_name in os.listdir(group_path):
 
-                # If a iteam is not a .json file, we skip it:
+                # If an item is not a .json file, we skip it:
                 if not file_name.endswith(".json"):
                     continue
 
-                # If the iteam is a .json file, we load it and create a Prompt object:
+                # If the item is a .json file, we load it and create a Prompt object:
                 file_path = os.path.join(group_path, file_name)
                 with open(file_path, "r", encoding="utf-8") as f:
 
                     # We read the JSON data from the file:
                     data = json.load(f)
 
-                    # WE create a Prompt object using the data:
+                    # We create a Prompt object using the data:
                     prompt_obj = Prompt(**data)
 
                     # We append the prompt to the group's prompts list:
