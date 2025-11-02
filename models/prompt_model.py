@@ -15,8 +15,8 @@ from typing import List
 class Prompt:
     """Represents a single prompt with its content."""
     
-    name: str              # prompt 文件名（不含副檔名）
-    content: str           # prompt 內容
+    name: str
+    content: str
     
     def __str__(self) -> str:
         preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
