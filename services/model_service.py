@@ -6,10 +6,11 @@ model_service.py
 Central service for managing LLM models across providers.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from services.model_providers.base_provider import ModelProvider, ModelInfo
+from services.model_providers.lmstudio_provider import LMStudioProvider
 from services.model_providers.openai_provider import OpenAIProvider
-from services.model_providers.google_provider import GoogleAIProvider
+# from services.model_providers.google_provider import GoogleAIProvider
 
 
 ##################################################################
@@ -21,15 +22,17 @@ class ModelService:
     """
 
     # ----------------------------------------------------------------
-    def __init__(self, openai_key: Optional[str] = None, google_key: Optional[str] = None):
-        self.providers: Dict[str, ModelProvider] = {}
-        
-        # Register available providers
-        if openai_key:
-            self.providers["openai"] = OpenAIProvider(openai_key)
-        if google_key:
-            self.providers["google"] = GoogleAIProvider(google_key)
-
+    def __init__(self):
+        """Initialize ModelService with all available providers."""
+        # Register all providers - they handle their own configuration
+        self.providers: Dict[str, ModelProvider] = {
+            "openai": OpenAIProvider(),
+            # "google": GoogleAIProvider(),
+            "lmstudio": LMStudioProvider(),
+            # Add more providers here as you implement them
+            # "anthropic": AnthropicProvider(),
+            # "deepseek": DeepSeekProvider(),
+        }
     # ----------------------------------------------------------------
     def list_all_models(self) -> List[ModelInfo]:
         """
@@ -82,7 +85,7 @@ class ModelService:
         provider = self.providers.get("lmstudio")
         if not provider:
             return False
-        
+
         # We call on LM_Studio provider to check availability
         return provider.is_available()
 

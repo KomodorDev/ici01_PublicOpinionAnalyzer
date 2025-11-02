@@ -1,101 +1,347 @@
-import os
-from dotenv import load_dotenv
-from cryptography.fernet import Fernet, InvalidToken
+# services/settings_service.py
+"""
+settings_service.py
+===================
+
+Central service for application settings management.
+Provides business logic layer on top of Config module.
+"""
+
+from typing import Any, Dict, Optional
+import json
+from config import Config, API_PROVIDERS, LOCAL_PROVIDERS
+
+from services.model_providers.openai_provider import OpenAIProvider
+from services.model_providers.lmstudio_provider import LMStudioProvider
+
 
 ##################################################################
 class SettingsService:
     """
-    Centralized configuration manager with encryption and environment switching.
+    Manages application settings with validation and business logic.
+    
+    Acts as intermediary between UI/controllers and low-level Config.
     """
 
-    # ----------------------------------------------------------
-    def __init__(self, env: str = "dev", password: str | None = None):
-        # Example: .env.dev, .env.prod
-        self.env_file = f".env.{env}"
-        self.enc_file = f"{self.env_file}.enc"
-        self.key_file = ".env.key"
-        self._cache = {}
-        self.password = password
+    # ----------------------------------------------------------------
+    def __init__(self):
+        """Initialize the settings service."""
 
-        if os.path.exists(self.env_file):
-            self.load_env()
-        elif os.path.exists(self.enc_file) and password:
-            self.decrypt_env(password)
-            self.load_env()
-        else:
-            raise FileNotFoundError("No .env or encrypted .env file found.")
+    # ----------------------------------------------------------------
+    # API Key Management
+    # ----------------------------------------------------------------
 
-    # ----------------------------------------------------------
-    # Environment loading
-    def load_env(self):
-        load_dotenv(self.env_file)
+    # ----------------------------------------------------------------
+    def get_api_key(self, provider_name: str) -> str:
+        """
+        Get API key for a provider.
+        
+        Args:
+            provider_name: Provider identifier (e.g., "openai", "anthropic")
+            
+        Returns:
+            API key string (may be placeholder "API_KEY" if not configured)
+        """
+        return Config.get_api_key(provider_name)
 
-    # ----------------------------------------------------------
-    # Encryption utilities
-    @staticmethod
-    def _write_file(path, data):
-        with open(path, "wb") as f:
-            f.write(data)
+    # ----------------------------------------------------------------
+    def get_masked_api_key(self, provider_name: str) -> str:
+        """
+        Get masked API key for display purposes.
+        
+        Shows first 4 and last 4 characters with asterisks in between.
+        Example: "sk-1234***********7890" or "API_KEY" if not configured.
+        
+        Args:
+            provider_name: Provider identifier
+            
+        Returns:
+            Masked API key string
+        """
+        key = self.get_api_key(provider_name)
 
-    @staticmethod
-    def _read_file(path):
-        with open(path, "rb") as f:
-            return f.read()
+        if key == "API_KEY" or not key:
+            return "API_KEY"
 
-    def generate_key(self, password: str):
-        key = Fernet.generate_key()
-        with open(self.key_file, "wb") as f:
-            f.write(key)
-        print(f"Key file generated at {self.key_file}")
-        return key
+        # Mask the middle part
+        if len(key) <= 8:
+            return "****"
 
-    def get_key(self):
-        if not os.path.exists(self.key_file):
-            raise FileNotFoundError("Encryption key not found. Generate one first.")
-        return self._read_file(self.key_file)
+        visible_chars = 4
+        prefix = key[:visible_chars]
+        suffix = key[-visible_chars:]
+        masked_middle = "*" * (len(key) - (2 * visible_chars))
 
-    def encrypt_env(self):
-        if not os.path.exists(self.env_file):
-            raise FileNotFoundError(f"{self.env_file} not found.")
-        key = self.get_key()
-        f = Fernet(key)
-        data = self._read_file(self.env_file)
-        enc_data = f.encrypt(data)
-        self._write_file(self.enc_file, enc_data)
-        print(f"Encrypted config -> {self.enc_file}")
+        return f"{prefix}{masked_middle}{suffix}"
 
-    def decrypt_env(self, password: str):
-        key = self.get_key()
-        f = Fernet(key)
-        data = self._read_file(self.enc_file)
+    # ----------------------------------------------------------------
+    def set_api_key(self, provider_name: str, api_key: str) -> bool:
+        """
+        Set API key for a provider with validation.
+        
+        Args:
+            provider_name: Provider identifier
+            api_key: The API key to store
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if provider_name not in API_PROVIDERS:
+            print(f"Unknown provider: {provider_name}")
+            return False
+
+        if not api_key or api_key.strip() == "":
+            print("API key cannot be empty")
+            return False
+
+        return Config.set_api_key(provider_name, api_key.strip())
+
+    # ----------------------------------------------------------------
+    def is_provider_configured(self, provider_name: str) -> bool:
+        """
+        Check if a provider has an API key configured (lightweight check).
+        
+        Args:
+            provider_name: Provider identifier
+            
+        Returns:
+            True if provider has API key set, False otherwise
+        """
+        return Config.is_key_configured(provider_name)
+
+    # ----------------------------------------------------------------
+    def is_provider_available(self, provider_name: str) -> tuple[bool, str]:
+        """
+        Check if a provider is actually available by testing the connection.
+        
+        This makes an actual API call to verify the key works.
+        
+        Args:
+            provider_name: Provider identifier (e.g., "openai", "anthropic")
+            
+        Returns:
+            Tuple of (is_available: bool, message: str)
+        """
+
+        # Get the provider and test connection
         try:
-            dec_data = f.decrypt(data)
-            with open(self.env_file, "wb") as f_out:
-                f_out.write(dec_data)
-            print(f"Decrypted env file -> {self.env_file}")
-        except InvalidToken:
-            raise ValueError("Invalid password or corrupted key")
+            if provider_name == "openai":
 
-    # ----------------------------------------------------------
-    # Value accessors
-    def get(self, key: str, default=None):
-        if key in self._cache:
-            return self._cache[key]
-        value = os.getenv(key, default)
-        self._cache[key] = value
-        return value
+                provider = OpenAIProvider(self)
+                return provider.test_connection()
 
-    @property
-    def openai_key(self): return self.get("OPENAI_API_KEY")
-    @property
-    def google_key(self): return self.get("GOOGLE_API_KEY")
-    @property
-    def deepseek_key(self): return self.get("DEEPSEEK_API_KEY")
-    @property
-    def lmstudio_url(self): return self.get("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
-    @property
-    def admin_password(self): return self.get("CONFIG_PASSWORD")
-    
-    # ----------------------------------------------------------
+            elif provider_name == "lmstudio":
+
+                provider = LMStudioProvider(self)
+                return provider.test_connection()
+
+            else:
+                return False, f"Unknown provider: {provider_name}"
+
+        except Exception as e:
+            return False, f"Error testing {provider_name}: {str(e)}"
+
+    # ----------------------------------------------------------------
+    def get_all_masked_api_keys(self) -> Dict[str, str]:
+        """
+        Get all API keys with masking for display.
+        
+        Returns:
+            Dictionary mapping provider names to masked API keys
+        """
+        return {
+            provider: self.get_masked_api_key(provider)
+            for provider in API_PROVIDERS.keys()
+        }
+
+    # ----------------------------------------------------------------
+    # Local Provider Configuration
+    # ----------------------------------------------------------------
+
+    # ----------------------------------------------------------------
+    def get_provider_url(self, provider_name: str) -> Optional[str]:
+        """
+        Get base URL for a local provider.
+        
+        Args:
+            provider_name: Provider identifier (e.g., "lmstudio", "ollama")
+            
+        Returns:
+            Base URL string, or None if provider not found
+        """
+        return Config.get_local_provider_url(provider_name)
+
+    # ----------------------------------------------------------------
+    def set_provider_url(self, provider_name: str, url: str) -> bool:
+        """
+        Set base URL for a local provider with validation.
+        
+        Args:
+            provider_name: Provider identifier
+            url: Base URL to set
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if provider_name not in LOCAL_PROVIDERS:
+            print(f"Unknown local provider: {provider_name}")
+            return False
+
+        if not url or not url.strip():
+            print("URL cannot be empty")
+            return False
+
+        url = url.strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            print("URL must start with http:// or https://")
+            return False
+
+        if url.endswith("/"):
+            url = url[:-1]
+
+        return Config.set_local_provider_url(provider_name, url)
+
+    # ----------------------------------------------------------------
+    # Provider Status
+    # ----------------------------------------------------------------
+
+    # ----------------------------------------------------------------
+    def get_all_provider_statuses(self) -> Dict[str, Dict[str, any]]:
+        """
+        Get comprehensive status of all providers.
+        
+        Returns:
+            Dictionary with provider status information
+        """
+        statuses: Dict[str, Dict[str, Any]] = {}
+
+        # --- API providers ---
+        for provider in API_PROVIDERS.keys():
+            status, message = self.is_provider_available(provider)
+            statuses[provider] = {
+                "available": status,                     # bool only
+                "message": message,                      # detail string
+                "masked_key": self.get_masked_api_key(provider),
+                "type": "api",
+            }
+
+        # --- Local providers ---
+        for provider in LOCAL_PROVIDERS.keys():
+            status, message = self.is_provider_available(provider)
+            statuses[provider] = {
+                "available": status,                     # bool only
+                "message": message,
+                "url": self.get_provider_url(provider),
+                "type": "local",
+            }
+
+        # Debug print (optional)
+        print(json.dumps(statuses, indent=2))
+
+        return statuses
+
+    # ----------------------------------------------------------------
+    def get_available_providers(self) -> list[str]:
+        """
+        Get list of provider names that are configured and ready to use.
+        
+        Returns:
+            List of provider names
+        """
+        available = []
+
+        for provider in API_PROVIDERS.keys():
+            if self.is_provider_available(provider):
+                available.append(provider)
+
+        for provider in LOCAL_PROVIDERS.keys():
+            available.append(provider)
+
+        return available
+
+    # ----------------------------------------------------------------
+    # Validation Helpers
+    # ----------------------------------------------------------------
+
+    # ----------------------------------------------------------------
+    def validate_api_key_format(self, provider_name: str, api_key: str) -> tuple[bool, str]:
+        """
+        Validate API key format for a specific provider.
+        
+        Args:
+            provider_name: Provider identifier
+            api_key: API key to validate
+            
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        if not api_key or api_key.strip() == "":
+            return False, "API key cannot be empty"
+
+        key = api_key.strip()
+
+        if provider_name == "openai":
+            if not key.startswith("sk-"):
+                return False, "OpenAI API keys should start with 'sk-'"
+            if len(key) < 20:
+                return False, "OpenAI API key seems too short"
+
+        elif provider_name == "anthropic":
+            if not key.startswith("sk-ant-"):
+                return False, "Anthropic API keys should start with 'sk-ant-'"
+
+        elif provider_name == "google":
+            if len(key) < 30:
+                return False, "Google API key seems too short"
+
+        return True, ""
+
 
 ##################################################################
+# Test Main
+##################################################################
+def main():
+    """Test the SettingsService functionality."""
+    print("="*60)
+    print("Testing SettingsService")
+    print("="*60)
+
+    # Create service instance
+    settings = SettingsService()
+
+    # Test provider statuses
+    print("\nProvider Statuses:")
+    statuses = settings.get_all_provider_statuses()
+    for provider, info in statuses.items():
+        status_icon = "✓" if info["configured"] else "⚠"
+        print(f"\n  {status_icon} {provider.upper()} ({info['type']})")
+        if info["type"] == "api":
+            print(f"     Key: {info['masked_key']}")
+        else:
+            print(f"     URL: {info['url']}")
+
+    # Test available providers
+    print("\n" + "-"*60)
+    print("Available Providers:")
+    available = settings.get_available_providers()
+    if available:
+        for provider in available:
+            print(f"  ✓ {provider}")
+    else:
+        print("  ⚠ No providers available")
+
+    # Test masked keys
+    print("\n" + "-"*60)
+    print("Masked API Keys:")
+    masked_keys = settings.get_all_masked_api_keys()
+    for provider, masked_key in masked_keys.items():
+        configured = "✓" if masked_key != "API_KEY" else "⚠"
+        print(f"  {configured} {provider}: {masked_key}")
+
+    print("\n" + "="*60)
+    print("Test complete!")
+    print("="*60)
+
+
+if __name__ == "__main__":
+    main()

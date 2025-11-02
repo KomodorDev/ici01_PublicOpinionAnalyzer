@@ -10,6 +10,7 @@ Fetches video metadata and comments from YouTube.
 import os
 import sys
 import json
+import re
 import subprocess
 from datetime import datetime, timezone
 from pprint import pprint
@@ -30,10 +31,14 @@ class YouTubeFetcher(ContentFetcher):
         return "youtube.com" in url or "youtu.be" in url
 
     # ----------------------------------------------------------------
-    def fetch_content(self, url: str) -> ContentAnalysis:
+    def fetch_content(self, url: str, progress_callback=None) -> ContentAnalysis:
         """
         Fetch YouTube video metadata and comments using yt-dlp,
         saving them as timestamped JSON files inside Content_Archive.
+        
+        Args:
+            url: YouTube video URL
+            progress_callback: Optional callback function(percent, status) for progress updates
         """
         platform = "youtube"
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
@@ -64,14 +69,41 @@ class YouTubeFetcher(ContentFetcher):
             url,
         ]
 
-        # Running yt-dlp:
+        # Running yt-dlp with real-time output
         print(f"Running yt-dlp for {url} ...")
         try:
-            _result = subprocess.run(command, capture_output=True, text=True, check=True)
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                f"yt-dlp failed with exit code {e.returncode}: {e.stderr}"
-            ) from e
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Merge stderr into stdout
+                text=True,
+                bufsize=1,  # Line buffered
+                universal_newlines=True
+            )
+            
+            # Read output line by line
+            for line in process.stdout:
+                line = line.strip()
+                
+                # Print for debugging
+                print(line)
+                
+                # Parse progress if callback provided
+                if progress_callback and line:
+                    # yt-dlp progress format: [download]  45.2% of 1.23MiB at 500.00KiB/s ETA 00:02
+                    match = re.search(r'\[download\]\s+(\d+\.?\d*)%', line)
+                    if match:
+                        percent = float(match.group(1))
+                        progress_callback(percent, line)
+            
+            # Wait for completion
+            return_code = process.wait()
+            
+            if return_code != 0:
+                raise RuntimeError(f"yt-dlp failed with exit code {return_code}")
+                
+        except Exception as e:
+            raise RuntimeError(f"yt-dlp failed: {e}") from e
 
         # Locate the generated JSON in temp_dir
         # CONCURRENCY ISSUE HERE - This code should not run in parallel
@@ -165,7 +197,7 @@ class YouTubeFetcher(ContentFetcher):
 
 def main():
     """Main"""
-    default_url = "https://www.youtube.com/watch?v=F7MkGWRR3XI"
+    default_url = "https://www.youtube.com/watch?v=hSXQg2IQ3QM&t=627s"
 
     # Optionally allow URL override from command line
     url = sys.argv[1] if len(sys.argv) > 1 else default_url
@@ -174,10 +206,16 @@ def main():
 
     fetcher = YouTubeFetcher()
 
+    # Progress handler that prints updates
+    def progress_handler(percent, status_line):
+        # Print progress with carriage return to overwrite same line
+        print(f"\rProgress: {percent:5.1f}% - {status_line}", end='', flush=True)
+
     try:
-        result = fetcher.fetch_content(url)
+        result = fetcher.fetch_content(url, progress_callback=progress_handler)
+        print()  # New line after progress completes
     except Exception as e:
-        print(f"Error occurred while fetching content: {e}")
+        print(f"\nError occurred while fetching content: {e}")
         sys.exit(1)
 
     print("Fetch completed successfully!")
@@ -191,6 +229,7 @@ def main():
         print("--")
 
     print(f"\nTotal comments fetched: {len(result.comments)}")
+
 
 if __name__ == "__main__":
     main()

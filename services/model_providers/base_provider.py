@@ -7,7 +7,7 @@ Abstract base class for LLM provider integrations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List, Any, Optional
 from dataclasses import dataclass
 
 
@@ -18,9 +18,9 @@ class ModelInfo:
     id: str
     name: str
     provider: str
-    context_window: int
-    supports_function_calling: bool = False
-    supports_vision: bool = False
+    context_window: Optional[int] = None
+    supports_function_calling: Optional[bool] = None
+    supports_vision: Optional[bool] = None
 
 ##################################################################
 class ModelProvider(ABC):
@@ -31,12 +31,19 @@ class ModelProvider(ABC):
     """
 
     # ----------------------------------------------------------------
-    def is_available(self) -> bool:
-        """Return whether the provider service is available.
-        Default: returns True (for API-managed models).
+    @abstractmethod
+    def test_connection(self, api_key: str = None) -> tuple[bool, str]:
         """
-        return True
-    
+        Test if provider connection works (makes real API call).
+        
+        Args:
+            api_key: Optional API key to test. If None, uses stored configuration.
+        
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        pass
+
     # ----------------------------------------------------------------
     @abstractmethod
     def list_models(self) -> List[ModelInfo]:
@@ -46,7 +53,6 @@ class ModelProvider(ABC):
         Returns:
             List of ModelInfo objects describing available models.
         """
-        pass
 
     # ----------------------------------------------------------------
     @abstractmethod
@@ -60,7 +66,6 @@ class ModelProvider(ABC):
         Returns:
             ModelInfo object with model details.
         """
-        pass
 
     # ----------------------------------------------------------------
     @abstractmethod
@@ -75,7 +80,6 @@ class ModelProvider(ABC):
         Returns:
             Configured LLM client ready for use.
         """
-        pass
 
     # ----------------------------------------------------------------
 

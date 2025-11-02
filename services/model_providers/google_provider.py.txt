@@ -29,7 +29,7 @@ class GoogleAIProvider(ModelProvider):
             List of ModelInfo objects for available models.
         """
         models = []
-        
+
         # Fetch models from Google AI API
         for model in genai.list_models():
             # Filter to generative models only
@@ -43,14 +43,14 @@ class GoogleAIProvider(ModelProvider):
                     supports_vision="vision" in model.name.lower()
                 )
                 models.append(model_info)
-        
+
         return sorted(models, key=lambda x: x.id)
 
     # ----------------------------------------------------------------
     def get_model_info(self, model_id: str) -> ModelInfo:
         """Get detailed info about a specific Gemini model."""
         model = genai.get_model(f"models/{model_id}")
-        
+
         return ModelInfo(
             id=model_id,
             name=model.display_name or model_id,
@@ -59,7 +59,7 @@ class GoogleAIProvider(ModelProvider):
             supports_function_calling=True,
             supports_vision="vision" in model.name.lower()
         )
-    
+
     # ----------------------------------------------------------------
     # SAH: Likely not needed, LangGraph will handle client creation
     def create_client(self, model_id: str, **kwargs):

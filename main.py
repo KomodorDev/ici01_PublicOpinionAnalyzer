@@ -1,5 +1,10 @@
 # Entry point to start the application
-# main.py
+"""
+main.py 
+====================
+
+Main entry point for the PublicOpinionAnalyzer application.
+"""
 from controllers.app_controller import AppController
 
 # ----------------------------------------------------------------

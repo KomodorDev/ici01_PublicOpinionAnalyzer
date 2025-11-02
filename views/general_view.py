@@ -1,10 +1,17 @@
 # views/general_view.py
+"""
+general_view.py
+===============
+
+Renders the General interface using Gradio.
+"""
 import gradio as gr
+
 
 class GeneralView:
     """Defines the Gradio layout for the General tab."""
 
-    def render_general_view(self):
+    def render_general_view(self, models=None, groups=None):
         """
         Builds the Gradio components for the General tab.
 
@@ -63,8 +70,37 @@ class GeneralView:
                     size="sm",
                 )
 
-        # Model selector (from before)
-        available_models = ["Model A", "Model B", "Model C", "Model D"]
+        # Classification group selector — allow choosing a label group
+        group_choices = []
+        if groups:
+            try:
+                group_choices = list(groups)
+            except Exception:
+                group_choices = []
+
+        group_selector = gr.Dropdown(
+            choices=group_choices,
+            label="Classification Group",
+            value=group_choices[0] if group_choices else None,
+            interactive=True,
+        )
+
+        # Model selector — use models provided by the controller if available
+        # `models` may be a list of ModelInfo objects or simple strings.
+        available_models = []
+        if models:
+            for m in models:
+                try:
+                    # ModelInfo-like object
+                    name = getattr(m, "name", None) or getattr(m, "id", None) or str(m)
+                except Exception:
+                    name = str(m)
+                if name:
+                    available_models.append(name)
+
+        # Fallback to static sample list
+        if not available_models:
+            available_models = ["Model A", "Model B", "Model C", "Model D"]
         model_selector = gr.Dropdown(
             choices=available_models,
             multiselect=True,
@@ -99,19 +135,24 @@ class GeneralView:
             if not urls_text or not urls_text.strip():
                 return [], {}, ""
 
-            urls = [url.strip() for url in urls_text.split('\n') if url.strip()]
+            urls = [url.strip() for url in urls_text.split("\n") if url.strip()]
 
             if not urls:
                 return [], {}, ""
 
             # Create display labels (shortened URLs)
-            video_choices = [f"Video {i+1}: {url[:40]}..." for i, url in enumerate(urls)]
+            video_choices = [
+                f"Video {i+1}: {url[:40]}..." for i, url in enumerate(urls)
+            ]
 
             # Initialize empty summaries
             data = {url: "" for url in urls}
 
             return (
-                gr.Radio(choices=video_choices, value=video_choices[0] if video_choices else None),
+                gr.Radio(
+                    choices=video_choices,
+                    value=video_choices[0] if video_choices else None,
+                ),
                 data,
                 urls[0] if urls else "",
             )
@@ -132,7 +173,7 @@ class GeneralView:
             # Extract index from label (e.g., "Video 1: ..." -> index 0)
             try:
                 video_num = int(selected_label.split(":")[0].replace("Video ", ""))
-                urls = [url.strip() for url in urls_text.split('\n') if url.strip()]
+                urls = [url.strip() for url in urls_text.split("\n") if url.strip()]
                 selected_url_val = urls[video_num - 1]
                 summary = data.get(selected_url_val, "")
                 return selected_url_val, summary
@@ -175,6 +216,8 @@ class GeneralView:
 
         # Layout footer
         with gr.Group():
-            gr.Row([model_selector])        # pylint: disable=no-member,too-many-function-args
-            gr.Row([selected_models_text])  # pylint: disable=no-member,too-many-function-args
-            gr.Row([run_button])            # pylint: disable=no-member,too-many-function-args
+            gr.Row([model_selector])  # pylint: disable=no-member,too-many-function-args
+            gr.Row(
+                [selected_models_text]
+            )  # pylint: disable=no-member,too-many-function-args
+            gr.Row([run_button])  # pylint: disable=no-member,too-many-function-args
