@@ -94,9 +94,9 @@ class PromptService:
         try:
             prompt_obj = Prompt(name=name, content=content)
             self.repository.save_prompt(group_name, prompt_obj)
-            return (True, f"成功保存 prompt: {name}")
+            return (True, f"Successfully saved prompt: {name}")
         except Exception as e:
-            return (False, f"保存 prompt 失敗: {str(e)}")
+            return (False, f"Failed to save prompt: {str(e)}")
     
     # ----------------------------------------------------------------
     def delete_prompt(self, name: str, group_name: str = "SystemPrompts") -> Tuple[bool, str]:
@@ -112,9 +112,9 @@ class PromptService:
         """
         try:
             self.repository.delete_prompt(group_name, name)
-            return (True, f"成功刪除 prompt: {name}")
+            return (True, f"Successfully deleted prompt: {name}")
         except Exception as e:
-            return (False, f"刪除 prompt 失敗: {str(e)}")
+            return (False, f"Failed to delete prompt: {str(e)}")
 
     # ----------------------------------------------------------------
 

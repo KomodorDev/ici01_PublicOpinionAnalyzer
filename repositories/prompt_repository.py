@@ -75,13 +75,16 @@ class PromptRepository:
         - Each `.json` file inside those subfolders is deserialized into a
         `Prompt` object and assigned to its group.
 
+        Note:
+            The base directory is guaranteed to exist due to creation
+            in `__init__()`, so this method will never raise FileNotFoundError.
+
         Returns:
             List[PromptGroup]:
                 A list of all loaded groups with their prompt objects.
+                Returns an empty list if no groups exist yet.
 
         Raises:
-            FileNotFoundError:
-                If the base `Prompts/` folder does not exist.
             json.JSONDecodeError:
                 If any prompt JSON file is malformed.
         """
@@ -194,7 +197,6 @@ class PromptRepository:
 
         if os.path.exists(group_path):
             shutil.rmtree(group_path)  # deletes entire folder recursively
-            print(f"Deleted prompt group: {group_path}")
         else:
             print(f"Group '{group_name}' does not exist.")
 
