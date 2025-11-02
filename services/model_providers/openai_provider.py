@@ -41,7 +41,6 @@ class OpenAIProvider(ModelProvider):
         return self.settings_service.get_api_key(self.provider_name)
 
     # ----------------------------------------------------------------
-    # ----------------------------------------------------------------
     def test_connection(self, api_key: str = None) -> tuple[bool, str]:
         """
         Test if OpenAI API key works by making a real API call.
@@ -128,11 +127,9 @@ class OpenAIProvider(ModelProvider):
                 f"{self.provider_name.title()} not available: {message}"
             )
 
-        api_key = self.settings_service.get_api_key(self.provider_name)
-
         return ChatOpenAI(
             model=model_id,
-            api_key=api_key,
+            api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_tokens=kwargs.get("max_tokens", None),
         )
