@@ -206,7 +206,7 @@ class SettingsService:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def get_all_provider_statuses(self) -> Dict[str, Dict[str, any]]:
+    def get_all_provider_statuses(self) -> Dict[str, Dict[str, Any]]:
         """
         Get comprehensive status of all providers.
         
@@ -251,11 +251,14 @@ class SettingsService:
         available = []
 
         for provider in API_PROVIDERS.keys():
-            if self.is_provider_available(provider):
+            status, _ = self.is_provider_available(provider)
+            if status:
                 available.append(provider)
 
         for provider in LOCAL_PROVIDERS.keys():
-            available.append(provider)
+            status, _ = self.is_provider_available(provider)
+            if status:
+                available.append(provider)
 
         return available
 
@@ -313,7 +316,7 @@ def main():
     print("\nProvider Statuses:")
     statuses = settings.get_all_provider_statuses()
     for provider, info in statuses.items():
-        status_icon = "✓" if info["configured"] else "⚠"
+        status_icon = "✓" if info["available"] else "⚠"
         print(f"\n  {status_icon} {provider.upper()} ({info['type']})")
         if info["type"] == "api":
             print(f"     Key: {info['masked_key']}")
