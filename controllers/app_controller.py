@@ -66,8 +66,6 @@ class AppController:
                 # 3) re-render when `rerender_tick` changes
                 @gr.render(inputs=[rerender_tick])
                 def _(_tick):
-                    # Delay before rendering (so old UI disappears first)
-                    time.sleep(0.5)
                     # Your function builds the settings UI every time
                     # the tab is selected (because _tick changes).
                     self.settings_controller.render_settings_view()
