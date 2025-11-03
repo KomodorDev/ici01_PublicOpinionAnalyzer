@@ -6,8 +6,10 @@ video_analysis_service.py
 Service for analyzing YouTube videos using various AI providers.
 """
 from typing import Optional, List, Dict, Any
+
 from services.video_analysis.base_adapter import VideoAnalysisAdapter
 from services.video_analysis.google_adapter import GoogleAdapter
+
 
 ##################################################################
 class VideoAnalysisService:
@@ -36,9 +38,16 @@ class VideoAnalysisService:
         
         Args:
             model_service: ModelService instance for getting LLM clients
-            settings_service: Optional SettingsService instance
+            settings_service: SettingsService instance for configuration access.
+                            If None, creates a new instance.
         """
         self.model_service = model_service
+        
+        # Use provided settings service or create new one
+        if settings_service is None:
+            from services.settings_service import SettingsService  # pylint: disable=import-outside-toplevel
+            settings_service = SettingsService()
+        
         self.settings_service = settings_service
         self._adapters = {}  # Cache adapters
 
