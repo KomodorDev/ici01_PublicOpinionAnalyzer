@@ -81,6 +81,9 @@ class GoogleProvider(ModelProvider):
 
             models = []
             response = client.models.list()
+            
+            for model in response:
+                print(model)
 
             for model in response:
                 # Filter to generative models only
