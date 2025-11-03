@@ -1,6 +1,6 @@
-# services/video_analysis/gemini_adapter.py
+# services/video_analysis/google_adapter.py
 """
-gemini_adapter.py
+google_adapter.py
 =================
 
 Google Gemini implementation for video analysis.
