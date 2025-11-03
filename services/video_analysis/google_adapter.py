@@ -44,19 +44,16 @@ class GoogleAdapter(VideoAnalysisAdapter):
     def summarize(
         self,
         video_url: str,
-        client=None,  # Unused - kept for interface consistency
+        model_id: str,
         custom_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
     ) -> str:
         """
         Summarize a YouTube video using Gemini.
 
-        Note: Uses native Gemini API (not LangChain client) because
-        video analysis requires file_data parameter.
-
         Args:
             video_url: YouTube video URL
-            client: Unused (kept for interface compatibility)
+            model_id: Gemini model to use (e.g., 'gemini-2.0-flash-exp')
             custom_prompt: Optional custom prompt
             max_tokens: Maximum tokens in response
 
@@ -79,7 +76,7 @@ class GoogleAdapter(VideoAnalysisAdapter):
                 generation_config["max_output_tokens"] = max_tokens
 
             response = genai_client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model=model_id,
                 contents=[{"text": prompt}, {"file_data": {"file_uri": video_url}}],
                 config=generation_config if generation_config else None,
             )
@@ -93,8 +90,8 @@ class GoogleAdapter(VideoAnalysisAdapter):
     def analyze(
         self,
         video_url: str,
-        client=None,  # Unused - Gemini uses native API for video
-        custom_prompt: str = None,
+        model_id: str,
+        custom_prompt: str,
         max_tokens: Optional[int] = None,
     ) -> str:
         """
@@ -102,17 +99,18 @@ class GoogleAdapter(VideoAnalysisAdapter):
 
         Args:
             video_url: YouTube video URL
-            client: Unused (kept for interface compatibility)
+            model_id: Gemini model to use
             custom_prompt: Custom analysis prompt
             max_tokens: Maximum tokens in response
 
         Returns:
             Analysis result
         """
+
         if not custom_prompt:
             raise ValueError("custom_prompt is required for analyze()")
 
-        return self.summarize(video_url, client, custom_prompt, max_tokens)
+        return self.summarize(video_url, model_id, custom_prompt, max_tokens)
 
 
 ##################################################################
@@ -151,7 +149,7 @@ def main():
         print("\n⚠️  Please configure your Google API key in Settings or .env file.")
         return
 
-    # Test video URL
+    # Test video URL - Oreo
     test_video_url = "https://www.youtube.com/watch?v=m9coOXt5nuw"
     print(f"\nTest video: {test_video_url}")
 
@@ -162,7 +160,7 @@ def main():
 
     try:
         print("\n📹 Generating summary...")
-        summary = adapter.summarize(video_url=test_video_url)
+        summary = adapter.summarize(video_url=test_video_url, model_id="gemini-2.0-flash-exp",)
 
         print("\n✅ Summary:")
         print("-" * 60)
@@ -183,7 +181,7 @@ def main():
     try:
         print("\n📝 Analyzing with custom prompt (max 100 tokens)...")
         custom_analysis = adapter.analyze(
-            video_url=test_video_url,
+            video_url=test_video_url, model_id="gemini-2.0-flash-exp",
             custom_prompt="Describe what happens in this video in 2-3 sentences.",
             max_tokens=100,
         )
@@ -207,7 +205,7 @@ def main():
     try:
         print("\n🔍 Generating detailed analysis...")
         detailed_analysis = adapter.analyze(
-            video_url=test_video_url,
+            video_url=test_video_url, model_id="gemini-2.0-flash-exp",
             custom_prompt=(
                 "Provide a detailed analysis of this video including: "
                 "1) Visual elements, 2) Audio/dialogue, 3) Overall message or purpose"

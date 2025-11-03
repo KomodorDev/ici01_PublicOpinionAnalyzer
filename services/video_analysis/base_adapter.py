@@ -18,7 +18,7 @@ class VideoAnalysisAdapter(ABC):
     def summarize(
         self,
         video_url: str,
-        client,
+        model_id: str,
         custom_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None
     ) -> str:
@@ -27,7 +27,7 @@ class VideoAnalysisAdapter(ABC):
         
         Args:
             video_url: YouTube video URL
-            client: LLM client from ModelService
+            model_id: Model identifier to use for analysis
             custom_prompt: Optional custom prompt for summarization
             max_tokens: Maximum tokens in response (None = provider default)
             
@@ -40,7 +40,7 @@ class VideoAnalysisAdapter(ABC):
     def analyze(
         self,
         video_url: str,
-        client,
+        model_id: str,
         custom_prompt: str,
         max_tokens: Optional[int] = None
     ) -> str:
@@ -49,7 +49,7 @@ class VideoAnalysisAdapter(ABC):
         
         Args:
             video_url: YouTube video URL
-            client: LLM client from ModelService
+            model_id: Model identifier to use for analysis
             custom_prompt: Custom analysis prompt
             max_tokens: Maximum tokens in response (None = provider default)
             
