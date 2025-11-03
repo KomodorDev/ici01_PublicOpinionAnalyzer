@@ -12,4 +12,4 @@ from .model_service import ModelService
 
 
 # Define what’s publicly importable from this package
-__all__ = ["GeneralService", "SettingsService", "ClassificationService", "ModelService", "DataService"]
+__all__ = ["GeneralService", "SettingsService", "ClassificationService", "ModelService"]
