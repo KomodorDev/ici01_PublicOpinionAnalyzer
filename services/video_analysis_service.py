@@ -201,6 +201,7 @@ class VideoAnalysisService:
             video_url: YouTube video URL
             provider: Provider name
             model_id: Model identifier
+            max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
             
         Returns:
@@ -228,6 +229,7 @@ class VideoAnalysisService:
             video_url: YouTube video URL
             provider: Provider name
             model_id: Model identifier
+            max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
             
         Returns:
