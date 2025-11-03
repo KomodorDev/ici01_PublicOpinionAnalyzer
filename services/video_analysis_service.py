@@ -24,10 +24,7 @@ class VideoAnalysisService:
     # Models that support video analysis
     VIDEO_CAPABLE_MODELS = {
         'google': [
-            'gemini-1.5-pro',
-            'gemini-1.5-flash',
             'gemini-2.0-flash-exp',
-            'gemini-2.0-pro-exp',
         ]
     }
 
@@ -100,7 +97,7 @@ class VideoAnalysisService:
         for provider, model_ids in self.VIDEO_CAPABLE_MODELS.items():
             # Check if provider is configured
             try:
-                adapter = self._get_adapter(provider)
+                self._get_adapter(provider)
                 provider_available = True
             except Exception:
                 provider_available = False
@@ -123,6 +120,7 @@ class VideoAnalysisService:
         provider: str,
         model_id: str,
         custom_prompt: Optional[str] = None,
+        max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
         """
@@ -133,6 +131,7 @@ class VideoAnalysisService:
             provider: Provider name ('google', 'gemini')
             model_id: Model identifier (e.g., 'gemini-1.5-flash')
             custom_prompt: Optional custom summarization prompt
+            max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
             
         Returns:
@@ -147,15 +146,8 @@ class VideoAnalysisService:
         # Get adapter
         adapter = self._get_adapter(provider)
 
-        # Get model client (may not be used by all adapters)
-        client = None
-        if not adapter.supports_native_video():
-            client = self.model_service.get_model_client(
-                provider, model_id, **kwargs
-            )
-
-        # Execute summarization
-        return adapter.summarize(video_url, client, custom_prompt)
+        # Execute summarization with model_id
+        return adapter.summarize(video_url, model_id, custom_prompt, max_tokens)
 
     # ----------------------------------------------------------------
     def analyze(
@@ -164,6 +156,7 @@ class VideoAnalysisService:
         provider: str,
         model_id: str,
         custom_prompt: str,
+        max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
         """
@@ -174,6 +167,7 @@ class VideoAnalysisService:
             provider: Provider name
             model_id: Model identifier
             custom_prompt: Custom analysis prompt
+            max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
             
         Returns:
@@ -187,16 +181,9 @@ class VideoAnalysisService:
 
         # Get adapter
         adapter = self._get_adapter(provider)
-
-        # Get model client (may not be used by all adapters)
-        client = None
-        if not adapter.supports_native_video():
-            client = self.model_service.get_model_client(
-                provider, model_id, **kwargs
-            )
-
-        # Execute analysis
-        return adapter.analyze(video_url, client, custom_prompt)
+        
+        # Execute analysis with model_id
+        return adapter.analyze(video_url, model_id, custom_prompt, max_tokens)
 
     # ----------------------------------------------------------------
     def get_key_points(
@@ -204,6 +191,7 @@ class VideoAnalysisService:
         video_url: str,
         provider: str,
         model_id: str,
+        max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
         """
@@ -222,7 +210,7 @@ class VideoAnalysisService:
             "List the key points discussed in this video. "
             "Format as a bulleted list with brief explanations for each point."
         )
-        return self.analyze(video_url, provider, model_id, prompt, **kwargs)
+        return self.analyze(video_url, provider, model_id, prompt, max_tokens, **kwargs)
 
     # ----------------------------------------------------------------
     def get_transcript_summary(
@@ -230,6 +218,7 @@ class VideoAnalysisService:
         video_url: str,
         provider: str,
         model_id: str,
+        max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
         """
@@ -249,7 +238,7 @@ class VideoAnalysisService:
             "organized chronologically. Include timestamps or time references "
             "where possible."
         )
-        return self.analyze(video_url, provider, model_id, prompt, **kwargs)
+        return self.analyze(video_url, provider, model_id, prompt, max_tokens, **kwargs)
 
     # ----------------------------------------------------------------
     def _is_video_capable(self, provider: str, model_id: str) -> bool:
