@@ -23,10 +23,7 @@ class GoogleAdapter(VideoAnalysisAdapter):
             settings_service: SettingsService instance for API key access
         """
         if settings_service is None:
-            from services.settings_service import (
-                SettingsService,
-            )  # pylint: disable=import-outside-toplevel
-
+            from services.settings_service import SettingsService  # pylint: disable=import-outside-toplevel
             settings_service = SettingsService()
 
         self.settings_service = settings_service
@@ -72,7 +69,7 @@ class GoogleAdapter(VideoAnalysisAdapter):
 
             prompt = custom_prompt or (
                 "Summarize this video in detail, highlighting the key points "
-                "and main takeaways. Structure your summary with clear sections. "
+                "and main takeaways. Structure your summary with clear sections. If any parts of the video contradict reality, clearly note these inaccuracies."
                 "Provide the summary directly without any preamble or meta-commentary."
             )
 
@@ -119,6 +116,7 @@ class GoogleAdapter(VideoAnalysisAdapter):
 
 
 ##################################################################
+
 
 ##################################################################
 # Test Main
@@ -174,6 +172,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Summarization failed: {e}")
         import traceback
+
         traceback.print_exc()
 
     # Test 2: Custom prompt with token limit
@@ -197,6 +196,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Custom analysis failed: {e}")
         import traceback
+
         traceback.print_exc()
 
     # Test 3: Detailed analysis
@@ -223,6 +223,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Detailed analysis failed: {e}")
         import traceback
+
         traceback.print_exc()
 
     print("\n" + "=" * 60)
