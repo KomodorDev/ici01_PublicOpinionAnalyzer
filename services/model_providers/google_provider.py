@@ -179,9 +179,51 @@ def main():
         print(f"     Function Calling: {model.supports_function_calling}")
         print(f"     Vision: {model.supports_vision}")
 
+    # Test actual model inference
+    print("\n" + "="*60)
+    print("Testing Model Inference")
+    print("="*60)
+
+    # Use a simple, reliable model
+    test_model = "gemini-2.0-flash"  # Fast and cheap for testing
+
+    print(f"\nTesting model: {test_model}")
+    print("Sending test query: 'What is 2+2? Answer with just the number.'")
+
+    try:
+        # Create client
+        client = provider.create_client(
+            model_id=test_model,
+            temperature=0.0,  # Deterministic for testing
+            max_tokens=10
+        )
+
+        # Make a simple request
+        response = client.invoke("What is 2+2? Answer with just the number.")
+
+        print("\n✅ Model Response:")
+        print("-" * 60)
+        print(response.content)
+        print("-" * 60)
+
+        # Verify response is reasonable
+        if response.content and len(response.content) > 0:
+            print("\n✅ Model inference test PASSED!")
+            print(f"   Response length: {len(response.content)} characters")
+        else:
+            print("\n⚠️  Warning: Model returned empty response")
+
+    except Exception as e:
+        print(f"\n❌ Model inference test FAILED!")
+        print(f"   Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
     print("\n" + "="*60)
     print("Test complete!")
     print("="*60)
 
 if __name__ == "__main__":
     main()
+
+# python -m services.model_providers.google_provider
