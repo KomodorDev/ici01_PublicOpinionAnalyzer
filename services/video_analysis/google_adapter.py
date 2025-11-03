@@ -67,7 +67,7 @@ class GoogleAdapter(VideoAnalysisAdapter):
             prompt = custom_prompt or (
                 "Summarize this video in detail, highlighting the key points "
                 "and main takeaways. Structure your summary with clear sections. If any parts of the video contradict reality, clearly note these inaccuracies."
-                "Provide the summary directly without any preamble or meta-commentary."
+                " Provide the summary directly without any preamble or meta-commentary."
             )
 
             # Build generation config
