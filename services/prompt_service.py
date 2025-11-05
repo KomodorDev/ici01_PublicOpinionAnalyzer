@@ -13,6 +13,7 @@ import re
 from repositories.prompt_template_repository import PromptTemplateRepository
 from services.classification_service import ClassificationService
 from services.output_format_service import OutputFormatService
+from models.content_models import ContentItem, Comment
 
 
 ##################################################################
@@ -31,72 +32,104 @@ class PromptService:
     def __init__(
         self,
         prompt_template_repository: PromptTemplateRepository,
-        classification_service: ClassificationService,
-        output_format_service: OutputFormatService,
         platform: Optional[str] = None,
+        prompt_template_name: Optional[str] = None,
         classification_group_name: Optional[str] = None,
+        content_item: Optional[ContentItem] = None,
+        classification_service: Optional[ClassificationService] = None,
+        output_format_service: Optional[OutputFormatService] = None,
     ):
         """
         Initialize PromptService.
 
         Args:
-            prompt_template_repository: Repository for template storage
-            classification_service: Service for classification operations
-            output_format_service: Service for output format generation
+            prompt_template_repository: Repository for prompt template storage (required)
             platform: Default platform (e.g., 'youtube')
+            prompt_template_name: Default prompt template to use
             classification_group_name: Default classification group folder name
+            content_item: Optional ContentItem to extract metadata from
+            classification_service: Service for classification operations (optional, needed for create_prompt)
+            output_format_service: Service for output format generation (optional, needed for create_prompt)
         """
-        self.prompt_template_repo = prompt_template_repository
-        self.classification_service = classification_service
-        self.output_format_service = output_format_service
+        self.prompt_template_repository = prompt_template_repository
 
         # Persistent configuration
         self.platform = platform
+        self.prompt_template_name = prompt_template_name
         self.classification_group_name = classification_group_name
 
-        # Caching
-        self._template_cache = {}
-        self._classification_cache = {}
+        # Store content item reference
+        self.content_item = content_item
+
+        # Optional services (only needed for prompt creation)
+        self.classification_service = classification_service
+        self.output_format_service = output_format_service
+
+        # Simple caching - single values per instance
+        self._cached_prompt_template: Optional[dict] = None
+        self._cached_classifications_string: Optional[str] = None
+        self._cached_output_format: Optional[str] = None
+
+        # Track what format is cached to avoid regeneration
+        self._cached_classification_variant: Optional[str] = None
 
         # Regex pattern for placeholder detection
         self.placeholder_pattern = r"\[([A-Z_]+)\]"
-        # e.g. Hello [USERNAME], your order [ORDER_ID] is complete.
 
-    # ================================================================
-    # Configuration Management
-    # ================================================================
+        # Load and cache prompt template if platform and name are provided
+        if self.platform and self.prompt_template_name:
+            self._cached_prompt_template = (
+                self.prompt_template_repository.load_prompt_template(
+                    self.platform, self.prompt_template_name
+                )
+            )
+
+            # Detect which placeholders are used in the template
+            prompt_template_text = self._cached_prompt_template["template"]
+            used_placeholders = self.detect_placeholders(prompt_template_text)
+
+            # Determine which classification variant is used and cache it
+            if self.classification_service and self.classification_group_name:
+                classification_variant = self._get_used_classification_variant(
+                    used_placeholders
+                )
+
+                # Load and cache the appropriate format
+                self._cached_classifications_string = (
+                    self.classification_service.get_classification_group_to_string(
+                        self.classification_group_name, classification_variant
+                    )
+                )
+
+            # Load and cache output format if needed
+            if self.output_format_service and self.classification_group_name:
+                self._cached_output_format = (
+                    self.output_format_service.get_output_format_string(
+                        self.classification_group_name
+                    )
+                )
 
     # ----------------------------------------------------------------
-    def set_platform(self, platform: str):
-        """Set default platform."""
-        self.platform = platform
-
-    # ----------------------------------------------------------------
-    def set_classification_group(self, classification_group_name: str):
+    def _get_used_classification_variant(
+        self, used_placeholders: List[str]
+    ) -> Optional[str]:
         """
-        Set default classification group.
-
-        Args:
-            classification_group_name: Folder name for classification group
+        Returns the used classification variant placeholder name (e.g. 'CLASSIFICATIONS_FULL') or None.
         """
-        self.classification_group_name = classification_group_name
-        # Clear classification cache when changing group
-        self._classification_cache.clear()
-
-    # ----------------------------------------------------------------
-    def get_configuration(self) -> dict:
-        """Get current configuration."""
-        return {
-            "platform": self.platform,
-            "classification_group_name": self.classification_group_name,
-        }
+        if not self.classification_service:
+            return None
+        available_variants = self.classification_service.get_classification_variants()
+        for variant in available_variants:
+            if variant in used_placeholders:
+                return variant
+        return None
 
     # ================================================================
     # CRUD Operations (Pass-through to Repository)
     # ================================================================
 
     # ----------------------------------------------------------------
-    def load_template(
+    def load_prompt_template(
         self, platform: Optional[str] = None, template_name: str = None
     ) -> dict:
         """
@@ -113,17 +146,10 @@ class PromptService:
         if not platform:
             raise ValueError("Platform must be specified or set as default")
 
-        cache_key = f"{platform}:{template_name}"
-
-        # Check cache first
-        if cache_key in self._template_cache:
-            return self._template_cache[cache_key]
-
         # Load from repository
-        template = self.prompt_template_repo.load_template(platform, template_name)
-
-        # Cache it
-        self._template_cache[cache_key] = template
+        template = self.prompt_template_repository.load_prompt_template(
+            platform, template_name
+        )
 
         return template
 
@@ -152,19 +178,14 @@ class PromptService:
             raise ValueError("Platform must be specified or set as default")
 
         # Save via repository
-        path = self.prompt_template_repo.save_template(
+        path = self.prompt_template_repository.save_template(
             platform, template_name, template_data, overwrite
         )
-
-        # Invalidate cache for this template
-        cache_key = f"{platform}:{template_name}"
-        if cache_key in self._template_cache:
-            del self._template_cache[cache_key]
 
         return path
 
     # ----------------------------------------------------------------
-    def delete_template(
+    def delete_prompt_template(
         self, template_name: str, platform: Optional[str] = None
     ) -> bool:
         """
@@ -182,17 +203,16 @@ class PromptService:
             raise ValueError("Platform must be specified or set as default")
 
         # Delete via repository
-        deleted = self.prompt_template_repo.delete_template(platform, template_name)
-
-        # Invalidate cache
-        cache_key = f"{platform}:{template_name}"
-        if cache_key in self._template_cache:
-            del self._template_cache[cache_key]
+        deleted = self.prompt_template_repository.delete_template(
+            platform, template_name
+        )
 
         return deleted
 
     # ----------------------------------------------------------------
-    def list_all_template_names(self, platform: Optional[str] = None) -> List[dict]:
+    def list_all_prompt_template_names(
+        self, platform: Optional[str] = None
+    ) -> List[dict]:
         """
         List template names for a platform.
 
@@ -206,10 +226,10 @@ class PromptService:
         if not platform:
             raise ValueError("Platform must be specified or set as default")
 
-        return self.prompt_template_repo.list_all_template_names(platform)
+        return self.prompt_template_repository.list_all_prompt_template_names(platform)
 
     # ----------------------------------------------------------------
-    def load_all_templates(self, platform: Optional[str] = None) -> List[dict]:
+    def load_all_prompt_templates(self, platform: Optional[str] = None) -> List[dict]:
         """
         Load all templates with full data.
 
@@ -219,151 +239,58 @@ class PromptService:
         Returns:
             List of all templates
         """
-        return self.prompt_template_repo.load_all_templates(platform)
-
-    # ----------------------------------------------------------------
-    def template_exists(
-        self, template_name: str, platform: Optional[str] = None
-    ) -> bool:
-        """Check if template exists."""
-        platform = platform or self.platform
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
-
-        return self.prompt_template_repo.template_exists(platform, template_name)
-
-    # ================================================================
-    # Cache Management
-    # ================================================================
-
-    # ----------------------------------------------------------------
-    def clear_template_cache(self, platform: Optional[str] = None):
-        """Clear template cache."""
-        if platform:
-            # Clear only for specific platform
-            keys_to_remove = [
-                k for k in self._template_cache if k.startswith(f"{platform}:")
-            ]
-            for key in keys_to_remove:
-                del self._template_cache[key]
-        else:
-            # Clear all
-            self._template_cache.clear()
-
-    # ----------------------------------------------------------------
-    def clear_classification_cache(self):
-        """Clear classification cache."""
-        self._classification_cache.clear()
+        return self.prompt_template_repository.load_all_prompt_templates(platform)
 
     # ================================================================
     # Prompt Creation (Core Functionality)
     # ================================================================
 
     # ----------------------------------------------------------------
-    def create_prompt(
-        self,
-        template_name: str,
-        video_data: dict,
-        comment_context: dict,
-        platform: Optional[str] = None,
-        classification_group_name: Optional[str] = None,
-        classification_format: str = "indicators",
-    ) -> str:
+    def create_prompt(self, comment: Comment) -> str:
         """
-        Create a complete prompt ready for LLM.
-
-        Uses cached template and classification data for performance.
+        Create a complete prompt ready for LLM using cached data.
 
         Args:
-            template_name: Template to use
-            video_data: Dict with VIDEOTITLE, VIDEOCONTEXT, etc.
-            comment_context: Dict with TARGETCOMMENT, THREADCOMMENTS, etc.
-            platform: Platform name (uses default if None)
-            classification_group_name: Classification group folder name (uses default if None)
-            classification_format: "full", "indicators", or "explanations"
+            comment: Comment object to generate prompt for
 
         Returns:
             Final rendered prompt string
         """
-        # Use defaults if not specified
-        platform = platform or self.platform
-        classification_group_name = (
-            classification_group_name or self.classification_group_name
-        )
-
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
-        if not classification_group_name:
-            raise ValueError("Classification group must be specified or set as default")
-
-        # Load template (cached)
-        template_data = self.load_template(platform, template_name)
-        template_text = template_data["template"]
-
-        # Load classification data (cached)
-        classification_data = self._get_classification_group(classification_group_name)
-
-        # Format classifications based on requested format
-        classifications_formatted = self.classification_service.format_classifications(
-            classification_data, format_type=classification_format
-        )
-
-        # Generate all classification format variants (for flexibility)
-        classifications_full = self.classification_service.format_classifications(
-            classification_data, "full"
-        )
-        classifications_indicators = self.classification_service.format_classifications(
-            classification_data, "indicators"
-        )
-        classifications_explanations = (
-            self.classification_service.format_classifications(
-                classification_data, "explanations"
+        if not self._cached_prompt_template:
+            raise ValueError(
+                "Prompt template not cached. Initialize PromptService with "
+                "platform and prompt_template_name."
             )
-        )
 
-        # Generate output format
-        output_format = self.output_format_service.generate_output_format(
-            classification_data
-        )
+        if not self.content_item:
+            raise ValueError(
+                "ContentItem not provided. Initialize PromptService with content_item."
+            )
 
-        # Combine all variables
-        variables = {
-            "CLASSIFICATIONS": classifications_formatted,  # Default to requested format
-            "CLASSIFICATIONS_FULL": classifications_full,
-            "CLASSIFICATIONS_INDICATORS": classifications_indicators,
-            "CLASSIFICATIONS_EXPLANATIONS": classifications_explanations,
-            "OUTPUTFORMAT": output_format,
-            **video_data,
-            **comment_context,
+        # Build comment context from comment object
+        comment_context = {
+            "TARGETCOMMENT": comment.text,
+            "THREADCOMMENTS": "THREADCOMMENTS_Test - Implementation currently missing",  # TODO
+            "TAGGEDCOMMENTS": "TaggedComments_Test - Implementation currently missing",  # TODO
+            "COMMENTAUTHOR": comment.author,
+            # ... whatever other comment fields you need
         }
 
-        # Render template
-        return self._substitute_variables(template_text, variables)
-
-    # ----------------------------------------------------------------
-    def _get_classification_group(self, classification_group_name: str) -> dict:
-        """
-        Get classification data (with caching).
-
-        Args:
-            classification_group_name: Classification group folder name
-
-        Returns:
-            Classification data dict
-        """
-        # Check cache
-        if classification_group_name in self._classification_cache:
-            return self._classification_cache[classification_group_name]
-
-        # Load from file system by folder name
-        classification_data = self.classification_service.load_classification_group(
-            classification_group_name
+        # Build variables from cached/stored data
+        variables = {
+            # Cached at init
+            "CLASSIFICATIONS": self._cached_classifications_string or "",
+            "OUTPUTFORMAT": self._cached_output_format or "",
+            # From content_item
+            "VIDEOTITLE": self.content_item.title,
+            "VIDEOCONTEXT": self.content_item.summary,
+            # From comment
+            **comment_context,
+        }
+        
+        return self._substitute_variables(
+            self._cached_prompt_template["template"], variables
         )
-
-        # Cache it
-        self._classification_cache[classification_group_name] = classification_data
-
-        return classification_data
 
     # ================================================================
     # Variable Substitution
@@ -418,7 +345,7 @@ class PromptService:
         if not platform:
             raise ValueError("Platform must be specified or set as default")
 
-        template_data = self.load_template(platform, template_name)
+        template_data = self.load_prompt_template(platform, template_name)
         template_text = template_data["template"]
 
         detected = self.detect_placeholders(template_text)
@@ -439,3 +366,68 @@ class PromptService:
     # ----------------------------------------------------------------
 
 ##################################################################
+
+def main():
+    """Test the ProviderService class."""
+    # Create a ContentItem
+    content_item = ContentItem(
+        content_id="vid123",
+        platform="youtube",
+        url="https://youtube.com/watch?v=abc123",
+        title="How to Build Amazing Apps",
+        author="TechGuru",
+        description="A comprehensive tutorial on app development",
+        view_count=50000,
+        like_count=3200,
+        summary="This video covers the fundamentals of modern app development including architecture, testing, and deployment.",
+    )
+
+    # Create a Comment
+    comment = Comment(
+        comment_id="comment456",
+        content_id="vid123",
+        platform="youtube",
+        author="user789",
+        text="This is an incredibly toxic comment that should be flagged!",
+        published_at="2025-11-05T18:30:00Z",
+        like_count=5,
+    )
+
+    # Initialize services
+    prompt_template_repo = PromptTemplateRepository()
+    classification_service = ClassificationService()
+    output_format_service = OutputFormatService()
+
+    # Create PromptService
+    prompt_service = PromptService(
+        prompt_template_repository=prompt_template_repo,
+        platform="youtube",
+        prompt_template_name="default",
+        classification_group_name="Default",
+        content_item=content_item,
+        classification_service=classification_service,
+        output_format_service=output_format_service,
+    )
+
+    # Test create_prompt
+    try:
+        prompt = prompt_service.create_prompt(comment
+        )
+
+        print("=" * 80)
+        print("GENERATED PROMPT:")
+        print("=" * 80)
+        print(prompt)
+        print("=" * 80)
+
+    except Exception as e:
+        print(f"Error creating prompt: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    main()
+
+# python -m services.prompt_service
