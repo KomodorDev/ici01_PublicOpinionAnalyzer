@@ -97,7 +97,7 @@ class PromptService:
                 # Load and cache the appropriate format
                 self._cached_classifications_string = (
                     self.classification_service.get_classification_group_to_string(
-                        self.classification_group_name, classification_variant
+                        self.classification_group_name, classification_variant or "CLASSIFICATIONS"
                     )
                 )
 
@@ -130,8 +130,7 @@ class PromptService:
 
     # ----------------------------------------------------------------
     def load_prompt_template(
-        self, platform: Optional[str] = None, template_name: str = None
-    ) -> dict:
+        self, template_name: str, platform: Optional[str] = None, ) -> dict:
         """
         Load a template (with caching).
 
