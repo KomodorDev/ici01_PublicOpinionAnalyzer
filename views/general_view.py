@@ -11,7 +11,7 @@ import gradio as gr
 class GeneralView:
     """Defines the Gradio layout for the General tab."""
 
-    def render_general_view(self, models=None, groups=None):
+    def render_general_view(self, controller=None, models=None, groups=None, prompt_styles=None):
         """
         Builds the Gradio components for the General tab.
 
@@ -21,6 +21,12 @@ class GeneralView:
         - Left panel: scrollable list of videos
         - Right panel: selected video's URL and editable summary
         - Auto-generate summary button per video
+        
+        Args:
+            controller: GeneralController instance for handling analysis
+            models: List of ModelInfo objects
+            groups: List of classification group names
+            prompt_styles: List of prompt style names
         """
 
         gr.Markdown("### General Analysis Tab")
@@ -85,24 +91,43 @@ class GeneralView:
             interactive=True,
         )
 
+        # Prompt style selector
+        prompt_choices = []
+        if prompt_styles:
+            try:
+                prompt_choices = list(prompt_styles)
+            except Exception:
+                prompt_choices = []
+
+        prompt_selector = gr.Dropdown(
+            choices=prompt_choices,
+            label="Prompt Style",
+            value=prompt_choices[0] if prompt_choices else "default",
+            interactive=True,
+        )
+
         # Model selector — use models provided by the controller if available
-        # `models` may be a list of ModelInfo objects or simple strings.
-        available_models = []
+        # Store models as State to preserve full ModelInfo objects
+        models_state = gr.State(models or [])
+        
+        # Build display choices with provider info
+        available_model_choices = []
         if models:
             for m in models:
                 try:
-                    # ModelInfo-like object
-                    name = getattr(m, "name", None) or getattr(m, "id", None) or str(m)
+                    # ModelInfo object with provider, id, and name
+                    display_name = f"{m.provider}: {m.name}"
+                    available_model_choices.append(display_name)
                 except Exception:
-                    name = str(m)
-                if name:
-                    available_models.append(name)
+                    display_name = str(m)
+                    available_model_choices.append(display_name)
 
         # Fallback to static sample list
-        if not available_models:
-            available_models = ["Model A", "Model B", "Model C", "Model D"]
+        if not available_model_choices:
+            available_model_choices = ["openai: gpt-4", "openai: gpt-3.5-turbo"]
+            
         model_selector = gr.Dropdown(
-            choices=available_models,
+            choices=available_model_choices,
             multiselect=True,
             label="Select Models",
             value=[],
@@ -124,6 +149,11 @@ class GeneralView:
         )
 
         run_button = gr.Button("Run Analysis", variant="primary")
+        
+        # Results display area
+        progress_text = gr.Markdown("Ready to start analysis...")
+        results_output = gr.JSON(label="Analysis Results", visible=False)
+        results_download = gr.File(label="Download Results", visible=False)
 
         # --- Event Handlers ---
 
@@ -212,6 +242,132 @@ class GeneralView:
             fn=save_summary,
             inputs=[selected_url, summary_box, video_data],
             outputs=video_data,
+        )
+
+        # Run analysis handler
+        def handle_run_analysis(
+            data, 
+            selected_model_names, 
+            all_models, 
+            prompt_style, 
+            group_name
+        ):
+            """
+            Handle the Run Analysis button click.
+            
+            Args:
+                data: Dict of {url: summary}
+                selected_model_names: List of display names (e.g., "openai: gpt-4")
+                all_models: List of ModelInfo objects
+                prompt_style: Selected prompt style name
+                group_name: Selected classification group name
+            """
+            # Validation
+            if not data or not any(data.values()):
+                return (
+                    "❌ Please add videos and summaries first!",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+            
+            if not selected_model_names:
+                return (
+                    "❌ Please select at least one model!",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+            
+            if not group_name:
+                return (
+                    "❌ Please select a classification group!",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+            
+            if not controller:
+                return (
+                    "❌ Controller not initialized!",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+            
+            # Convert display names back to (provider, model_id) tuples
+            model_selections = []
+            for display_name in selected_model_names:
+                # Find matching ModelInfo object
+                for model in all_models:
+                    if f"{model.provider}: {model.name}" == display_name:
+                        model_selections.append((model.provider, model.id))
+                        break
+            
+            if not model_selections:
+                return (
+                    "❌ Could not resolve selected models!",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+            
+            # Progress callback (for future streaming updates)
+            progress_messages = []
+            def progress_callback(current, total, message):
+                progress_messages.append(f"[{current}/{total}] {message}")
+                print(f"Progress: {message}")  # Log to console
+            
+            try:
+                # Call controller's run_analysis
+                results = controller.run_analysis(
+                    summaries=data,
+                    model_selections=model_selections,
+                    prompt_style_name=prompt_style,
+                    classification_group_name=group_name,
+                    progress_callback=progress_callback
+                )
+                
+                # Format results for display
+                results_dict = []
+                for analysis in results:
+                    result_item = {
+                        "url": analysis.content.url,
+                        "title": analysis.content.title,
+                        "summary": analysis.content.summary,
+                        "comments_analyzed": len(analysis.comments),
+                        "labels": [
+                            {
+                                "comment": c.text,
+                                "labels": c.labels
+                            }
+                            for c in analysis.comments[:10]  # Show first 10
+                        ]
+                    }
+                    results_dict.append(result_item)
+                
+                return (
+                    "✅ Analysis completed successfully!",
+                    gr.JSON(value=results_dict, visible=True),
+                    gr.File(visible=False)  # TODO: Add CSV export
+                )
+                
+            except Exception as e:
+                return (
+                    f"❌ Error during analysis: {str(e)}",
+                    gr.JSON(visible=False),
+                    gr.File(visible=False)
+                )
+        
+        run_button.click(  # pylint: disable=no-member,too-many-function-args
+            fn=handle_run_analysis,
+            inputs=[
+                video_data,
+                model_selector,
+                models_state,
+                prompt_selector,
+                group_selector
+            ],
+            outputs=[
+                progress_text,
+                results_output,
+                results_download
+            ]
         )
 
         # Layout footer

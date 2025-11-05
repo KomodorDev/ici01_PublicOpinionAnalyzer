@@ -40,6 +40,19 @@ class ClassificationService:
         return self.repository.load_classification_group(group_name)
 
     # ----------------------------------------------------------------
+    def get_classification_group(self, group_name: str) -> ClassificationGroup:
+        """
+        Alias for load_classification_group for API consistency.
+        
+        Args:
+            group_name: Name of the classification group folder
+            
+        Returns:
+            ClassificationGroup object
+        """
+        return self.load_classification_group(group_name)
+
+    # ----------------------------------------------------------------
     def list_classification_group_names(self) -> List[str]:
         """
         Get a list of all available classification group names.
@@ -100,16 +113,54 @@ class ClassificationService:
 
     # ----------------------------------------------------------------
     def _format_full(self, classifications: List[Classification]) -> str:
-        """Mock: Format with full details."""
-        return "test_full - Implementation currently missing"
+        """
+        Format classifications with full details (question + indicators).
+        
+        Returns formatted string with numbered questions and example indicators.
+        """
+        lines = []
+        for i, cls in enumerate(classifications, 1):
+            lines.append(f"{i}. {cls.question}")
+            
+            if cls.pro_indicators:
+                lines.append(f"   Positive indicators: {', '.join(cls.pro_indicators[:3])}")
+            if cls.con_indicators:
+                lines.append(f"   Negative indicators: {', '.join(cls.con_indicators[:3])}")
+            if cls.neutral_indicators:
+                lines.append(f"   Neutral indicators: {', '.join(cls.neutral_indicators[:3])}")
+            
+            lines.append("")  # Empty line between classifications
+        
+        return "\n".join(lines)
 
     # ----------------------------------------------------------------
     def _format_indicators(self, classifications: List[Classification]) -> str:
-        """Mock: Format with indicators."""
-        return "test_indicators - Implementation currently missing"
+        """
+        Format classifications with just questions (numbered list).
+        
+        Returns simple numbered list of classification questions.
+        """
+        return "\n".join(
+            f"{i}. {cls.question}"
+            for i, cls in enumerate(classifications, 1)
+        )
 
     # ----------------------------------------------------------------
     def _format_explanation(self, classifications: List[Classification]) -> str:
-        """Mock: Format with explanations."""
-        return "test_explanation - Implementation currently missing"
+        """
+        Format classifications with explanations of output types.
+        
+        Returns detailed format including expected output type for each classification.
+        """
+        lines = []
+        for i, cls in enumerate(classifications, 1):
+            lines.append(f"{i}. {cls.question}")
+            lines.append(f"   Output type: {cls.output_type}")
+            
+            if cls.output_type == "categorical" and cls.categories:
+                lines.append(f"   Valid categories: {', '.join(cls.categories)}")
+            
+            lines.append("")
+        
+        return "\n".join(lines)
 ##################################################################

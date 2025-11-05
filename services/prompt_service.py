@@ -14,6 +14,7 @@ from repositories.prompt_template_repository import PromptTemplateRepository
 from services.classification_service import ClassificationService
 from services.output_format_service import OutputFormatService
 from models.content_models import ContentItem, Comment
+from models.prompt_model import PromptGroup
 
 
 ##################################################################
@@ -361,6 +362,70 @@ class PromptService:
             "optional_variables": optional,
             "undeclared_placeholders": undeclared,
         }
+
+    # ----------------------------------------------------------------
+    def get_prompt_style(self, template_name: str, platform: Optional[str] = None) -> PromptGroup:
+        """
+        Get a prompt style as a PromptGroup object.
+        
+        Args:
+            template_name: Name of the template
+            platform: Platform name (uses default if None)
+            
+        Returns:
+            PromptGroup object
+        """
+        platform = platform or self.platform
+        if not platform:
+            # Default to 'youtube' if no platform specified
+            platform = "youtube"
+        
+        template_dict = self.load_prompt_template(template_name, platform)
+        return PromptGroup.from_template_dict(template_dict)
+
+    # ----------------------------------------------------------------
+    def build_analysis_prompt(
+        self,
+        comment: Comment,
+        content_item: ContentItem,
+        system_prompt: str,
+        user_prompt_template: str,
+        classifications_string: str,
+        output_format_string: str
+    ) -> tuple[str, str]:
+        """
+        Build system and user prompts for analysis service.
+        
+        This method is specifically designed for the analysis service's batch processing.
+        It takes pre-formatted strings instead of raw objects to avoid redundant processing.
+        
+        Args:
+            comment: Comment object to analyze
+            content_item: ContentItem with video/content metadata
+            system_prompt: Pre-formatted system prompt
+            user_prompt_template: User prompt template with placeholders
+            classifications_string: Pre-formatted classification questions
+            output_format_string: Pre-formatted output format specification
+            
+        Returns:
+            Tuple of (system_prompt, user_prompt)
+        """
+        # Build variable substitution map
+        variables = {
+            "TARGETCOMMENT": comment.text,
+            "COMMENTAUTHOR": comment.author,
+            "VIDEOTITLE": content_item.title if content_item else "",
+            "VIDEOCONTEXT": content_item.summary if content_item else "",
+            "THREADCOMMENTS": "",  # TODO: Implement thread comments
+            "TAGGEDCOMMENTS": "",  # TODO: Implement tagged comments
+            "CLASSIFICATIONS": classifications_string,
+            "OUTPUTFORMAT": output_format_string,
+        }
+        
+        # Use existing _substitute_variables method
+        user_prompt = self._substitute_variables(user_prompt_template, variables)
+        
+        return system_prompt, user_prompt
 
     # ----------------------------------------------------------------
 
