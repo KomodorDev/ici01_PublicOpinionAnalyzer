@@ -154,7 +154,7 @@ class PromptService:
         return template
 
     # ----------------------------------------------------------------
-    def save_template(
+    def save_prompt_template(
         self,
         template_name: str,
         template_data: dict,
@@ -178,7 +178,7 @@ class PromptService:
             raise ValueError("Platform must be specified or set as default")
 
         # Save via repository
-        path = self.prompt_template_repository.save_template(
+        path = self.prompt_template_repository.save_prompt_template(
             platform, template_name, template_data, overwrite
         )
 
@@ -203,7 +203,7 @@ class PromptService:
             raise ValueError("Platform must be specified or set as default")
 
         # Delete via repository
-        deleted = self.prompt_template_repository.delete_template(
+        deleted = self.prompt_template_repository.delete_prompt_template(
             platform, template_name
         )
 
@@ -368,7 +368,7 @@ class PromptService:
 ##################################################################
 
 def main():
-    """Test the ProviderService class."""
+    """Test the PromptService class."""
     # Create a ContentItem
     content_item = ContentItem(
         content_id="vid123",
@@ -411,8 +411,7 @@ def main():
 
     # Test create_prompt
     try:
-        prompt = prompt_service.create_prompt(comment
-        )
+        prompt = prompt_service.create_prompt(comment)
 
         print("=" * 80)
         print("GENERATED PROMPT:")
