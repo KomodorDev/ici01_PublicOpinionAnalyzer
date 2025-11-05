@@ -13,6 +13,8 @@ classification within that group is serialized as a `.json` file.
 
 The repository implements full CRUD operations:
 - Load all existing classification groups and their member classifications.
+- Load a single classification group by name
+- List all available classification group names
 - Save or update a single classification or entire group.
 - Create the directory structure automatically if missing.
 - Delete individual classifications or entire classification groups.
@@ -123,6 +125,73 @@ class ClassificationRepository:
                     group.classifications.append(classification)
 
             groups.append(group)
+        return groups
+
+    # ----------------------------------------------------------------
+    def load_classification_group(self, group_name: str) -> ClassificationGroup:
+        """
+        Load a single classification group by name.
+        
+        Args:
+            group_name: Name of the classification group (folder name)
+            
+        Returns:
+            ClassificationGroup: The loaded group with all its classifications
+            
+        Raises:
+            FileNotFoundError: If the group folder does not exist
+            json.JSONDecodeError: If any classification JSON file is malformed
+        """
+        # Build path to the group folder
+        group_path = os.path.join(self.base_path, group_name)
+
+        # Check if group folder exists
+        if not os.path.exists(group_path):
+            raise FileNotFoundError(f"Classification group not found: {group_name}")
+
+        if not os.path.isdir(group_path):
+            raise ValueError(f"Path is not a directory: {group_path}")
+
+        # Create ClassificationGroup object
+        group = ClassificationGroup(name=group_name)
+
+        # Load all classification JSON files in the group folder
+        for file_name in os.listdir(group_path):
+
+            # Skip non-JSON files
+            if not file_name.endswith(".json"):
+                continue
+
+            # Load the classification from JSON
+            file_path = os.path.join(group_path, file_name)
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                classification = Classification(**data)
+                group.classifications.append(classification)
+
+        # Check if group has any classifications
+        # if not group.classifications:
+        #    raise ValueError(f"No classifications found in group: {group_name}")
+
+        return group
+
+    # ----------------------------------------------------------------
+    def list_classification_group_names(self) -> List[str]:
+        """
+        List all available classification group names.
+        
+        Returns:
+            List[str]: List of group names (folder names)
+        """
+        groups = []
+
+        for item in os.listdir(self.base_path):
+            item_path = os.path.join(self.base_path, item)
+
+            # Only include directories
+            if os.path.isdir(item_path):
+                groups.append(item)
+
         return groups
 
     # ----------------------------------------------------------------
