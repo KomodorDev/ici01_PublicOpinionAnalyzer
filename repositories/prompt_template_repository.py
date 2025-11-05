@@ -21,7 +21,7 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def load_template(self, platform: str, template_name: str) -> dict:
+    def load_prompt_template(self, platform: str, template_name: str) -> dict:
         """
         Load a single prompt template.
         
@@ -35,7 +35,7 @@ class PromptTemplateRepository:
         Raises:
             FileNotFoundError: If template doesn't exist
         """
-        template_path = self._get_template_path(platform, template_name)
+        template_path = self._get_prompt_template_path(platform, template_name)
 
         if not template_path.exists():
             raise FileNotFoundError(f"Template not found: {template_path}")
@@ -44,7 +44,7 @@ class PromptTemplateRepository:
             return json.load(f)
 
     # ----------------------------------------------------------------
-    def load_all_templates(self, platform: Optional[str] = None) -> List[dict]:
+    def load_all_prompt_templates(self, platform: Optional[str] = None) -> List[dict]:
         """
         Load all templates, optionally filtered by platform.
         
@@ -87,7 +87,7 @@ class PromptTemplateRepository:
         return templates
 
     # ----------------------------------------------------------------
-    def list_all_template_names(self, platform: str) -> List[dict]:
+    def list_all_prompt_template_names(self, platform: str) -> List[dict]:
         """
         List template metadata for a specific platform.
         
@@ -124,7 +124,7 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def save_template(
+    def save_prompt_template(
         self,
         platform: str,
         template_name: str,
@@ -146,7 +146,7 @@ class PromptTemplateRepository:
         Raises:
             FileExistsError: If template exists and overwrite=False
         """
-        template_path = self._get_template_path(platform, template_name)
+        template_path = self._get_prompt_template_path(platform, template_name)
 
         # Check if exists
         if template_path.exists() and not overwrite:
@@ -168,7 +168,7 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def delete_template(self, platform: str, template_name: str) -> bool:
+    def delete_prompt_template(self, platform: str, template_name: str) -> bool:
         """
         Delete a prompt template.
         
@@ -179,7 +179,7 @@ class PromptTemplateRepository:
         Returns:
             True if deleted, False if didn't exist
         """
-        template_path = self._get_template_path(platform, template_name)
+        template_path = self._get_prompt_template_path(platform, template_name)
 
         if not template_path.exists():
             return False
@@ -192,14 +192,14 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def _get_template_path(self, platform: str, template_name: str) -> Path:
+    def _get_prompt_template_path(self, platform: str, template_name: str) -> Path:
         """Get full path to template file."""
         return self.base_path / platform / f"{template_name}.json"
 
     # ----------------------------------------------------------------
-    def template_exists(self, platform: str, template_name: str) -> bool:
+    def prompt_template_exists(self, platform: str, template_name: str) -> bool:
         """Check if a template exists."""
-        return self._get_template_path(platform, template_name).exists()
+        return self._get_prompt_template_path(platform, template_name).exists()
 
     # ----------------------------------------------------------------
 
