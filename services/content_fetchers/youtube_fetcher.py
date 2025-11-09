@@ -17,6 +17,7 @@ from pprint import pprint
 from dataclasses import asdict
 import shutil
 
+from enums.platform_enum import PlatformEnum
 from services.content_fetchers.base_fetcher import ContentFetcher
 from models.content_models import ContentAnalysis, Comment, ContentItem
 
@@ -151,7 +152,7 @@ class YouTubeFetcher(ContentFetcher):
         # Youtube Video as ContentItem
         content = ContentItem(
             content_id=data.get("id", ""),
-            platform="youtube",
+            platform=PlatformEnum.YOUTUBE,
             url=data.get("webpage_url", ""),
             title=data.get("title", "Untitled"),
             author=data.get("uploader") or data.get("channel", "Unknown"),
@@ -178,7 +179,6 @@ class YouTubeFetcher(ContentFetcher):
                 Comment(
                     comment_id=c.get("id", ""),
                     content_id=data.get("id", ""),
-                    platform="youtube",
                     author=c.get("author", "Unknown"),
                     text=c.get("text", ""),
                     published_at=published_iso or "",
