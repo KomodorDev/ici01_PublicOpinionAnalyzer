@@ -13,8 +13,11 @@ Classes:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Any
+from typing import Dict, List, Optional
 from abc import ABC
+
+from enums.platform_enum import PlatformEnum
+from models.label_model import Label
 
 ##################################################################
 @dataclass
@@ -41,7 +44,7 @@ class ContentItem(ABC):
         summary_source: Origin of summary ("manual" | "ai" | None).
     """
     content_id: str
-    platform: str
+    platform: PlatformEnum
     url: str
     title: str
     author: str
@@ -79,7 +82,6 @@ class Comment:
     """
     comment_id: str
     content_id: str
-    platform: str
     author: str
     text: str
     published_at: str
@@ -88,7 +90,25 @@ class Comment:
     parent_comment_id: Optional[str] = None  # For threaded replies
 
     # Analysis fields
-    labels: List[Any] = field(default_factory=list)  # Will be List[Label]
+    labels: Dict[str, Dict[str, Label]] = field(default_factory=dict)
+    """
+    Dictionary of all classification results for this comment.
+
+    Structure:
+        - Top-level keys: Model names (e.g., "gpt-4", "llama-2")
+        - Second-level keys: Classification_name (e.g., "toxicity", "spam")
+        - Values: Label instance with classification result, confidence, and explanation
+
+    This allows you to store, for each comment, the label produced for each classification task by each model.
+    Usage example:
+
+        comment.labels["gpt-4"]["toxicity"] = Label(value=True, confidence=0.98, explanation="Comment uses harmful language.")
+
+    See also: 
+        - Label class for explanation of label fields
+        - [Python dataclasses — official documentation][web:5]
+        - [Dataclass usage for nested objects on GeeksforGeeks][web:3]
+    """
 
 ##################################################################
 @dataclass
@@ -104,5 +124,6 @@ class ContentAnalysis:
     """
     content: ContentItem
     comments: List[Comment] = field(default_factory=list)
+    require_reasoning: bool = False  # If True, include explanations/rationales in the answer
 
 ##################################################################
