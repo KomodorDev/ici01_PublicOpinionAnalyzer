@@ -16,7 +16,6 @@ from langgraph.graph import StateGraph, START, END
 
 from models.content_models import ContentAnalysis, Comment
 from models.classification_models import ClassificationGroup
-from models.prompt_model import PromptGroup
 
 
 ##################################################################
@@ -283,7 +282,7 @@ def run_analysis(
     analyses: List[ContentAnalysis],
     model_clients: List[Any],
     model_names: List[str],
-    prompt_style: PromptGroup,
+    prompt_style: Prompt,
     classification_group: ClassificationGroup,
     prompt_service: Any,
     classification_service: Any,
