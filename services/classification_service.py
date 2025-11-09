@@ -1,7 +1,9 @@
 # CRUD for label groups
 # services/classification_service.py
-from typing import List
+from typing import List, Dict
+from enums.classification_output_enum import ClassificationOutputEnum
 from models.classification_models import Classification, ClassificationGroup
+from models.label_model import Label
 from repositories.classification_repository import ClassificationRepository
 
 
@@ -163,4 +165,90 @@ class ClassificationService:
             lines.append("")
         
         return "\n".join(lines)
-##################################################################
+
+    # ================================================================
+    # Validation
+    # ================================================================
+    
+    # ----------------------------------------------------------------
+    def validate_label_for_classification(self,classification: Classification, label: Label) -> bool:
+        """
+        Validates that a given label matches the rules set by a classification.
+        Returns True if valid, else False.
+        If classification.output_type is unknown, returns False.
+        """
+        # Extract value for convenience
+        value = label.value
+        ot = classification.output_type
+
+        # 1. Boolean type check
+        if ot == ClassificationOutputEnum.BOOLEAN:
+            return value in {True, False, None}
+
+        # 2. Probability type check
+        elif ot == ClassificationOutputEnum.PROBABILITY:
+            try:
+                return isinstance(value, (float, int)) and 0.0 <= float(value) <= 1.0
+            except Exception:
+                return False
+
+        # 3. Numeric type check
+        elif ot == ClassificationOutputEnum.NUMERIC:
+            return isinstance(value, (float, int)) or value is None
+
+        # 4. Categorical type check (single or multi-label)
+        elif ot == ClassificationOutputEnum.CATEGORICAL:
+            # Ensure categories are provided
+            if not classification.categories:
+                return False
+            # Multi-label
+            if classification.allow_multiple:
+                if not (isinstance(value, list) or value is None):
+                    return False
+                # Accept None/empty (for unclassified)
+                if value is None:
+                    return True
+                # Ensure all provided labels are allowed
+                return all(v in classification.categories for v in value)
+            # Single-label
+            else:
+                return (value in classification.categories) or (value is None)
+
+        # 5. Text type check (may also allow None)
+        elif ot == ClassificationOutputEnum.TEXT:
+            return isinstance(value, str) or value is None
+
+        # 6. Pairwise/mapping type check
+        elif ot == ClassificationOutputEnum.PAIRWISE:
+            # Accept dicts or None
+            if value is None:
+                return True
+            if not isinstance(value, dict):
+                return False
+            # Optionally: validate dict keys/values (add more rules as required)
+            return True
+
+        # Unknown type
+        else:
+            return False
+
+    # ----------------------------------------------------------------
+    def validate_labels(
+        self,
+        classifications: List[Classification],
+        labels: Dict[str, Label]
+    ) -> Dict[str, bool]:
+        """
+        Validates multiple labels against a list of classifications.
+        Returns a dict mapping classification name to validation status.
+        """
+        results = {}
+        for classification in classifications:
+            label = labels.get(classification.name)
+            if label is not None:
+                results[classification.name] = self.validate_label_for_classification(classification, label)
+            else:
+                results[classification.name] = False  # or None, if missing label
+        return results
+
+    # ----------------------------------------------------------------
