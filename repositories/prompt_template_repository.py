@@ -10,7 +10,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 from enums.platform_enum import PlatformEnum
-from models.prompt_template_model import PromptTemplateModel
+from models.prompt_template_model import PromptTemplate
 
 
 ##################################################################
@@ -28,7 +28,7 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
     def load_prompt_template(
         self, platform: PlatformEnum, template_name: str
-    ) -> PromptTemplateModel:
+    ) -> PromptTemplate:
         """
         Load a single prompt template.
 
@@ -48,12 +48,12 @@ class PromptTemplateRepository:
 
         with open(template_path, "r", encoding="utf-8") as f:
             template_data = json.load(f)
-        return PromptTemplateModel(**template_data)
+        return PromptTemplate(**template_data)
 
     # ----------------------------------------------------------------
     def load_all_prompt_templates(
         self, platform: Optional[PlatformEnum] = None
-    ) -> List[PromptTemplateModel]:
+    ) -> List[PromptTemplate]:
         """
         Load all templates, optionally filtered by platform.
 
@@ -61,7 +61,7 @@ class PromptTemplateRepository:
             platform: Optional Platform enum. If None, loads from all platforms.
 
         Returns:
-            List of PromptTemplateModel instances
+            List of PromptTemplate instances
         """
         templates = []
 
@@ -81,7 +81,7 @@ class PromptTemplateRepository:
                     continue
                 with open(file, "r", encoding="utf-8") as f:
                     template_data = json.load(f)
-                    templates.append(PromptTemplateModel(**template_data))
+                    templates.append(PromptTemplate(**template_data))
 
         return templates
 
@@ -125,7 +125,7 @@ class PromptTemplateRepository:
     def save_prompt_template(
         self,
         platform: PlatformEnum,
-        prompt_model: PromptTemplateModel,
+        prompt_model: PromptTemplate,
         overwrite: bool = False
     ) -> str:
         """

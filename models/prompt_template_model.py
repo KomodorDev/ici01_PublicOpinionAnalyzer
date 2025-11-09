@@ -12,7 +12,7 @@ from enums.platform_enum import PlatformEnum
 
 
 @dataclass
-class PromptTemplateModel:
+class PromptTemplate:
     """
     Represents a prompt template used for large language model (LLM) analysis in the MVC architecture.
 
