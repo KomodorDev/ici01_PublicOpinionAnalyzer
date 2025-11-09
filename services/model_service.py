@@ -10,7 +10,7 @@ from typing import List, Dict
 from services.model_providers.base_provider import ModelProvider, ModelInfo
 from services.model_providers.lmstudio_provider import LMStudioProvider
 from services.model_providers.openai_provider import OpenAIProvider
-# from services.model_providers.google_provider import GoogleAIProvider
+from services.model_providers.google_provider import GoogleProvider
 
 
 ##################################################################
@@ -27,7 +27,7 @@ class ModelService:
         # Register all providers - they handle their own configuration
         self.providers: Dict[str, ModelProvider] = {
             "openai": OpenAIProvider(),
-            # "google": GoogleAIProvider(),
+            "google": GoogleProvider(),
             "lmstudio": LMStudioProvider(),
             # Add more providers here as you implement them
             # "anthropic": AnthropicProvider(),
@@ -78,16 +78,6 @@ class ModelService:
     def get_providers(self) -> List[str]:
         """Get list of configured provider names."""
         return list(self.providers.keys())
-
-    # ----------------------------------------------------------------
-    def is_lmstudio_connected(self) -> bool:
-        """Check if LM Studio is running and responding."""
-        provider = self.providers.get("lmstudio")
-        if not provider:
-            return False
-
-        # We call on LM_Studio provider to check availability
-        return provider.is_available()
 
     # ----------------------------------------------------------------
 

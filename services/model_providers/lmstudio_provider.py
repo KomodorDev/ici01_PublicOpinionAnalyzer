@@ -8,12 +8,9 @@ Local LM Studio provider — OpenAI-compatible API running on localhost.
 import json
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
-
 import requests
 
-
 from services.model_providers.base_provider import ModelProvider, ModelInfo
-
 
 
 ##################################################################
@@ -203,27 +200,51 @@ def main():
         print("  2. Select and load a model")
 
 
-    ##########
-    # Just in Time - Test
-    payload = {
-        "model": "google/gemma-3-4b",
-        "messages": [
-            {"role": "user", "content": "Who started World War II?"}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 256,
-        "stream": False
-    }
+    # Test actual model inference
+    print("\n" + "="*60)
+    print("Testing Model Inference")
+    print("="*60)
 
+    # Use a simple, reliable model
+    test_model = "google/gemma-3-12b"  # Fast and cheap for testing
 
-    response = requests.post("http://localhost:1234/v1/chat/completions", json=payload, timeout=30)
-    data = response.json()
-    print(data["choices"][0]["message"]["content"])
-    ##########
+    print(f"\nTesting model: {test_model}")
+    print("Sending test query: 'What is 2+2? Answer with just the number.'")
 
-    print("\n" + "=" * 60)
+    try:
+        # Create client
+        client = provider.create_client(
+            model_id=test_model,
+            temperature=0.0,  # Deterministic for testing
+            max_tokens=10
+        )
+
+        # Make a simple request
+        response = client.invoke("What is 2+2? Answer with just the number.")
+
+        print("\n✅ Model Response:")
+        print("-" * 60)
+        print(response.content)
+        print("-" * 60)
+
+        # Verify response is reasonable
+        if response.content and len(response.content) > 0:
+            print("\n✅ Model inference test PASSED!")
+            print(f"   Response length: {len(response.content)} characters")
+        else:
+            print("\n⚠️  Warning: Model returned empty response")
+
+    except Exception as e:
+        print(f"\n❌ Model inference test FAILED!")
+        print(f"   Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+    print("\n" + "="*60)
     print("Test complete!")
-    print("=" * 60)
+    print("="*60)
 
 if __name__ == "__main__":
     main()
+
+# python -m services.model_providers.lmstudio_provider

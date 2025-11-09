@@ -42,7 +42,6 @@ class ModelProvider(ABC):
         Returns:
             Tuple of (success: bool, message: str)
         """
-        pass
 
     # ----------------------------------------------------------------
     @abstractmethod
