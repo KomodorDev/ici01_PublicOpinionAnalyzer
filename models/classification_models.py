@@ -21,49 +21,48 @@ Classes:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Literal, Optional
-
-ClassificationOutputType = Literal[
-    "boolean",        # True / False
-    "probability",    # float 0‑1
-    "numeric",        # continuous or ordinal number
-    "categorical",    # string category
-    "text"            # open string
-]
+from typing import Dict, List, Literal, Optional
+from enums.classification_output_enum import ClassificationOutputEnum
 
 ##################################################################
 @dataclass
 class Classification:
     """
-    Represents a single classification question and its expected output type.
-
-    Each Classification defines a labeling task such as
-    "Is the comment pro‑Taiwan?" and can specify whether the
-    answer should be boolean, probabilistic, numeric, categorical,
-    or free‑form text.
+    Represents a classification task with structured label output.
 
     Attributes:
-        name (str): Unique identifier for this classification.
-        question (str): The question or task prompt to guide analysis.
-        output_type (ClassificationOutputType): Specifies the kind of expected label.
-            - 'boolean' → True / False / None
-            - 'probability' → a float from 0.0 to 1.0
-            - 'numeric' → an integer or float score
-            - 'categorical' → one of multiple category strings
-            - 'text' → free‑form textual explanation
-        pro_indicators (list[str]): Example phrases suggesting a positive stance.
-        con_indicators (list[str]): Example phrases suggesting a negative stance.
-        neutral_indicators (list[str]): Sentences indicating neutrality or ambiguity.
-        categories (Optional[list[str]]): Allowed category values if output_type=='categorical'.
+        name (str): Unique identifier for the classification task.
+        question (str): The prompt or query for annotation/model.
+        explanation (str): Human-readable explanation/instructions.
+        output_type (ClassificationOutputType): Output type for the label.
+        categories (Optional[List[str]]): Allowed values for categorical output.
+        allow_multiple (bool): True if multiple categories can be selected for an answer.
+        indicators (Dict[str, List[str]]): Maps each category label to its example indicator phrases.
+
+    Example:
+        Classification(
+            name="agreement_level",
+            question="What level of agreement does the comment express?",
+            explanation="Annotate the degree of agreement using the provided categories.",
+            output_type=ClassificationOutputType.CATEGORICAL,
+            categories=["totally_agree", "partially_agree", "neutral", "disagree", "N/A"],
+            allow_multiple=False,
+            indicators={
+                "totally_agree": ["I fully support", "Absolutely correct"],
+                "partially_agree": ["I mostly agree", "Generally valid"],
+                "neutral": ["No clear opinion", "Neutral statement"],
+                "disagree": ["I don't support", "Completely wrong"]
+            }
+        )
     """
 
     name: str
     question: str
-    output_type: ClassificationOutputType = "boolean"
-    pro_indicators: List[str] = field(default_factory=list)
-    con_indicators: List[str] = field(default_factory=list)
-    neutral_indicators: List[str] = field(default_factory=list)
-    categories: Optional[List[str]] = None  # e.g. ["pro", "neutral", "anti"]
+    output_type: ClassificationOutputEnum = ClassificationOutputEnum.CATEGORICAL
+    explanation: Optional[str] = None
+    categories: Optional[List[str]] = None
+    allow_multiple: Optional[bool] = None
+    indicators: Optional[Dict[str, List[str]]] = None
 
 ##################################################################
 @dataclass

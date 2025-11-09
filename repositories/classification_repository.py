@@ -51,6 +51,7 @@ import json
 import shutil
 from dataclasses import asdict
 from typing import List
+from enums.classification_output_enum import ClassificationOutputEnum
 from models.classification_models import Classification, ClassificationGroup
 
 ##################################################################
@@ -87,43 +88,16 @@ class ClassificationRepository:
             json.JSONDecodeError:
                 If any classification JSON file is malformed.
         """
+        if not os.path.exists(self.base_path):
+            raise FileNotFoundError(f"Base classification directory not found: {self.base_path}")
 
-        # creates an empty list called groups. ": List ...." is a type hint
         groups: List[ClassificationGroup] = []
 
-        # os.listdir() returns a list of all items inside our Classifications/ directory
         for group_name in os.listdir(self.base_path):
-
-            # We create a full path to the group folder:
             group_path = os.path.join(self.base_path, group_name)
-
-            # if one of the items is not a folder, we skip it
             if not os.path.isdir(group_path):
                 continue
-
-            # We create a new ClassificationGroup object with the folder name
-            group = ClassificationGroup(name=group_name)
-
-            # We iterate over all files in the group folder:
-            for file_name in os.listdir(group_path):
-
-                # If an item is not a .json file, we skip it:
-                if not file_name.endswith(".json"):
-                    continue
-
-                # If the item is a .json file, we load it and create a Classification object:
-                file_path = os.path.join(group_path, file_name)
-                with open(file_path, "r", encoding="utf-8") as f:
-
-                    # We read the JSON data from the file:
-                    data = json.load(f)
-
-                    # WE create a Classification object using the data:
-                    classification = Classification(**data)
-
-                    # We append the classification to the group's classifications list:
-                    group.classifications.append(classification)
-
+            group = self.load_classification_group(group_name)
             groups.append(group)
         return groups
 
@@ -166,6 +140,9 @@ class ClassificationRepository:
             file_path = os.path.join(group_path, file_name)
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+                # Convert output_type to Enum if it's present and is a string
+                if "output_type" in data and isinstance(data["output_type"], str):
+                    data["output_type"] = ClassificationOutputEnum(data["output_type"])
                 classification = Classification(**data)
                 group.classifications.append(classification)
 
