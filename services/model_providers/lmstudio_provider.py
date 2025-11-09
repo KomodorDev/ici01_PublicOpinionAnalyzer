@@ -11,8 +11,8 @@ from langchain_openai import ChatOpenAI
 
 import requests
 
-
-from services.model_providers.base_provider import ModelProvider, ModelInfo
+from models.llm_model_info_model import LLMModelInfo
+from services.model_providers.base_provider import ModelProvider
 
 
 
@@ -68,12 +68,15 @@ class LMStudioProvider(ModelProvider):
             return False, f"{type(e).__name__} at {url}: {e}"
 
     # ----------------------------------------------------------------
-    def list_models(self) -> List[ModelInfo]:
+    def list_llm_models(self) -> List[LLMModelInfo]:
         """
-        Fetch the list of models from LM Studio's /v1/models endpoint.
-        
+        Fetch the list of LLM (language/chat) models from LM Studio's /v1/models endpoint.
+
         Returns:
-            List[ModelInfo]: List of available models from LM Studio.
+            List[LLMModelInfo]: List of available LLMs from LM Studio.
+
+        TODO:
+            Implement proper filtering to exclude embedding, moderation, or other non-LLMs.
         """
         success, _ = self.test_connection()
         if not success:
@@ -84,32 +87,25 @@ class LMStudioProvider(ModelProvider):
             resp.raise_for_status()
 
             data = resp.json()
-
-            # Print the full response for debugging
-            print("\n" + "="*60)
-            print("RAW LM STUDIO RESPONSE:")
-            print("="*60)
-            print(json.dumps(data, indent=2))
-            print("="*60 + "\n")
-
             models = []
 
-            # LM Studio returns OpenAI-compatible format: {"data": [...], "object": "list"}
+            # LM Studio typically returns OpenAI-compatible format: {"data": [...], "object": "list"}
             model_list = data.get("data", [])
 
             for model in model_list:
                 model_id = model.get("id", "")
                 if not model_id:
                     continue
-
+                # TODO: Properly filter out non-LLMs later!
                 models.append(
-                    ModelInfo(
-                        id=model_id,
-                        name=f"{model_id} (local)",
+                    LLMModelInfo(
+                        name=model_id,
                         provider=self.provider,
-                        context_window=model.get("context_length", None),
-                        supports_function_calling=None,
-                        supports_vision=None,
+                        display_name=f"{model_id} (local)",
+                        description=model.get("description", ""),
+                        context_window=model.get("context_length"),
+                        favorite=False,
+                        is_local=True
                     )
                 )
 
@@ -119,34 +115,35 @@ class LMStudioProvider(ModelProvider):
             print(f"Error fetching models from LM Studio: {e}")
             return []
 
+
     # ----------------------------------------------------------------
-    def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
+    def get_llm_model_info(self, model_name: str) -> Optional[LLMModelInfo]:
         """
         Get basic information about a specific model.
         
         Args:
-            model_id: The model identifier.
-            
+            model_name: The model name (as in LLMModelInfo.name).
+
         Returns:
             ModelInfo object with model details, or None if not found.
         """
-        models = self.list_models()
+        models = self.list_llm_models()
 
         for model in models:
-            if model.id == model_id:
+            if model.name == model_name:
                 return model
 
         # Model not found
         return None
 
     # ----------------------------------------------------------------
-    def create_client(self, model_id: str, **kwargs):
+    def create_llm_client(self, model_name: str, **kwargs):
         """Create a LangChain ChatOpenAI client for LM Studio."""
 
         return ChatOpenAI(
             base_url=self.base_url,
             api_key="lm-studio",  # Dummy key
-            model=model_id,
+            model=model_name,
             temperature=kwargs.get("temperature", 0.7),
             max_tokens=kwargs.get("max_tokens", None),
         )
@@ -187,7 +184,7 @@ def main():
     # Test listing models
     print("\n" + "-" * 60)
     print("Fetching models...")
-    models = provider.list_models()
+    models = provider.list_llm_models()
 
     if models:
         print(f"\nFound {len(models)} model(s):")
