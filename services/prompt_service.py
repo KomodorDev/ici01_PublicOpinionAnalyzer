@@ -10,11 +10,13 @@ Handles CRUD operations for prompt files.
 from typing import List, Optional
 import re
 
+from enums.platform_enum import PlatformEnum
 from repositories.prompt_template_repository import PromptTemplateRepository
 from services.classification_service import ClassificationService
 from services.output_format_service import OutputFormatService
 from models.content_models import ContentItem, Comment
-from models.prompt_model import PromptGroup
+from models.prompt_template_model import PromptTemplate
+
 
 
 ##################################################################
@@ -32,8 +34,7 @@ class PromptService:
     # ----------------------------------------------------------------
     def __init__(
         self,
-        prompt_template_repository: PromptTemplateRepository,
-        platform: Optional[str] = None,
+        platform: Optional[PlatformEnum] = None,
         prompt_template_name: Optional[str] = None,
         classification_group_name: Optional[str] = None,
         content_item: Optional[ContentItem] = None,
@@ -44,7 +45,6 @@ class PromptService:
         Initialize PromptService.
 
         Args:
-            prompt_template_repository: Repository for prompt template storage (required)
             platform: Default platform (e.g., 'youtube')
             prompt_template_name: Default prompt template to use
             classification_group_name: Default classification group folder name
@@ -52,7 +52,7 @@ class PromptService:
             classification_service: Service for classification operations (optional, needed for create_prompt)
             output_format_service: Service for output format generation (optional, needed for create_prompt)
         """
-        self.prompt_template_repository = prompt_template_repository
+        self.prompt_template_repository = PromptTemplateRepository()
 
         # Persistent configuration
         self.platform = platform
@@ -67,7 +67,7 @@ class PromptService:
         self.output_format_service = output_format_service
 
         # Simple caching - single values per instance
-        self._cached_prompt_template: Optional[dict] = None
+        self._cached_prompt_template: PromptTemplate = None
         self._cached_classifications_string: Optional[str] = None
         self._cached_output_format: Optional[str] = None
 
@@ -98,7 +98,8 @@ class PromptService:
                 # Load and cache the appropriate format
                 self._cached_classifications_string = (
                     self.classification_service.get_classification_group_to_string(
-                        self.classification_group_name, classification_variant or "CLASSIFICATIONS"
+                        self.classification_group_name,
+                        classification_variant or "CLASSIFICATIONS",
                     )
                 )
 
@@ -131,22 +132,27 @@ class PromptService:
 
     # ----------------------------------------------------------------
     def load_prompt_template(
-        self, template_name: str, platform: Optional[str] = None, ) -> dict:
+        self, template_name: str, platform: Optional[PlatformEnum] = None
+    ) -> PromptTemplate:
         """
-        Load a template (with caching).
+        Load a prompt template (with caching).
 
         Args:
-            platform: Platform name (uses default if None)
-            template_name: Template filename
+            platform: PlatformEnum instance (uses default if None)
+            template_name: Template filename (should match PromptTemplate.name)
 
         Returns:
-            Template dict
+            PromptTemplate
+
+        Raises:
+            ValueError: If platform is not specified or set as default
         """
-        platform = platform or self.platform
+        platform = platform or self.platform  # self.platform should be a PlatformEnum
+
         if not platform:
             raise ValueError("Platform must be specified or set as default")
 
-        # Load from repository
+        # Load from repository (now strictly typed)
         template = self.prompt_template_repository.load_prompt_template(
             platform, template_name
         )
@@ -156,51 +162,46 @@ class PromptService:
     # ----------------------------------------------------------------
     def save_prompt_template(
         self,
-        template_name: str,
-        template_data: dict,
-        platform: Optional[str] = None,
+        platform: PlatformEnum,
+        prompt_model: PromptTemplate,
         overwrite: bool = False,
     ) -> str:
         """
-        Save a template.
+        Save a prompt template.
 
         Args:
-            template_name: Template filename
-            template_data: Template dict
-            platform: Platform name (uses default if None)
-            overwrite: Whether to overwrite existing
+            prompt_model: PromptTemplate instance to save
+            platform: PlatformEnum (uses default if None)
+            overwrite: Whether to overwrite existing file
 
         Returns:
             Path to saved template
+
+        Raises:
+            ValueError: If platform is not specified or set as default
         """
-        platform = platform or self.platform
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
 
         # Save via repository
         path = self.prompt_template_repository.save_prompt_template(
-            platform, template_name, template_data, overwrite
+            platform, prompt_model, overwrite
         )
 
         return path
 
     # ----------------------------------------------------------------
     def delete_prompt_template(
-        self, template_name: str, platform: Optional[str] = None
+        self, platform: PlatformEnum, template_name: str
     ) -> bool:
         """
         Delete a template.
 
         Args:
             template_name: Template filename
-            platform: Platform name (uses default if None)
+            platform: PlatformEnum
 
         Returns:
             True if deleted, False if didn't exist
         """
-        platform = platform or self.platform
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
 
         # Delete via repository
         deleted = self.prompt_template_repository.delete_prompt_template(
@@ -246,7 +247,7 @@ class PromptService:
     # ================================================================
 
     # ----------------------------------------------------------------
-    def create_prompt(self, comment: Comment) -> str:
+    def create_prompt(self, comment: Comment) -> tuple[str, str]:
         """
         Create a complete prompt ready for LLM using cached data.
 
@@ -254,7 +255,7 @@ class PromptService:
             comment: Comment object to generate prompt for
 
         Returns:
-            Final rendered prompt string
+            Tuple of (system_prompt, user_prompt) 
         """
         if not self._cached_prompt_template:
             raise ValueError(
@@ -287,9 +288,9 @@ class PromptService:
             # From comment
             **comment_context,
         }
-        
-        return self._substitute_variables(
-            self._cached_prompt_template["template"], variables
+
+        return self._cached_prompt_template.system_prompt, self._substitute_variables(
+            self._cached_prompt_template.user_prompt_template, variables
         )
 
     # ================================================================
@@ -364,72 +365,9 @@ class PromptService:
         }
 
     # ----------------------------------------------------------------
-    def get_prompt_style(self, template_name: str, platform: Optional[str] = None) -> PromptGroup:
-        """
-        Get a prompt style as a PromptGroup object.
-        
-        Args:
-            template_name: Name of the template
-            platform: Platform name (uses default if None)
-            
-        Returns:
-            PromptGroup object
-        """
-        platform = platform or self.platform
-        if not platform:
-            # Default to 'youtube' if no platform specified
-            platform = "youtube"
-        
-        template_dict = self.load_prompt_template(template_name, platform)
-        return PromptGroup.from_template_dict(template_dict)
-
-    # ----------------------------------------------------------------
-    def build_analysis_prompt(
-        self,
-        comment: Comment,
-        content_item: ContentItem,
-        system_prompt: str,
-        user_prompt_template: str,
-        classifications_string: str,
-        output_format_string: str
-    ) -> tuple[str, str]:
-        """
-        Build system and user prompts for analysis service.
-        
-        This method is specifically designed for the analysis service's batch processing.
-        It takes pre-formatted strings instead of raw objects to avoid redundant processing.
-        
-        Args:
-            comment: Comment object to analyze
-            content_item: ContentItem with video/content metadata
-            system_prompt: Pre-formatted system prompt
-            user_prompt_template: User prompt template with placeholders
-            classifications_string: Pre-formatted classification questions
-            output_format_string: Pre-formatted output format specification
-            
-        Returns:
-            Tuple of (system_prompt, user_prompt)
-        """
-        # Build variable substitution map
-        variables = {
-            "TARGETCOMMENT": comment.text,
-            "COMMENTAUTHOR": comment.author,
-            "VIDEOTITLE": content_item.title if content_item else "",
-            "VIDEOCONTEXT": content_item.summary if content_item else "",
-            "THREADCOMMENTS": "",  # TODO: Implement thread comments
-            "TAGGEDCOMMENTS": "",  # TODO: Implement tagged comments
-            "CLASSIFICATIONS": classifications_string,
-            "OUTPUTFORMAT": output_format_string,
-        }
-        
-        # Use existing _substitute_variables method
-        user_prompt = self._substitute_variables(user_prompt_template, variables)
-        
-        return system_prompt, user_prompt
-
-    # ----------------------------------------------------------------
 
 ##################################################################
+
 
 def main():
     """Test the PromptService class."""
@@ -450,7 +388,6 @@ def main():
     comment = Comment(
         comment_id="comment456",
         content_id="vid123",
-        platform="youtube",
         author="user789",
         text="This is an incredibly toxic comment that should be flagged!",
         published_at="2025-11-05T18:30:00Z",
@@ -458,14 +395,12 @@ def main():
     )
 
     # Initialize services
-    prompt_template_repo = PromptTemplateRepository()
     classification_service = ClassificationService()
     output_format_service = OutputFormatService()
 
     # Create PromptService
     prompt_service = PromptService(
-        prompt_template_repository=prompt_template_repo,
-        platform="youtube",
+        platform=PlatformEnum.YOUTUBE,
         prompt_template_name="default",
         classification_group_name="Default",
         content_item=content_item,
