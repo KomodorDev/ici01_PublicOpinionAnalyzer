@@ -14,7 +14,7 @@ Provides interface for:
 
 from typing import List, Optional, Tuple
 from services.prompt_service import PromptService
-from models.prompt_model import Prompt
+from models.prompt_template_model import PromptTemplate
 
 
 ##################################################################
@@ -27,14 +27,14 @@ class PromptController:
         self.prompt_service = PromptService()
     
     # ----------------------------------------------------------------
-    def get_all_prompts(self) -> List[Prompt]:
+    def get_all_prompts(self) -> List[PromptTemplate]:
         """
         Get all available prompts.
         
         Returns:
             List of Prompt objects
         """
-        return self.prompt_service.get_all_prompts()
+
     
     # ----------------------------------------------------------------
     def get_prompt_names(self) -> List[str]:
@@ -44,7 +44,7 @@ class PromptController:
         Returns:
             List of prompt names
         """
-        return self.prompt_service.get_prompt_names()
+
     
     # ----------------------------------------------------------------
     def get_prompt_content(self, name: str) -> Optional[str]:
@@ -57,7 +57,6 @@ class PromptController:
         Returns:
             Prompt content string, or None if not found
         """
-        return self.prompt_service.get_prompt_content(name)
     
     # ----------------------------------------------------------------
     def create_or_update_prompt(self, name: str, content: str) -> Tuple[bool, str]:
@@ -71,7 +70,7 @@ class PromptController:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        return self.prompt_service.save_prompt(name, content)
+        return self.prompt_service.save_prompt_template(name, content)
     
     # ----------------------------------------------------------------
     def delete_prompt(self, name: str) -> Tuple[bool, str]:
@@ -84,7 +83,6 @@ class PromptController:
         Returns:
             Tuple of (success: bool, message: str)
         """
-        return self.prompt_service.delete_prompt(name)
 
 
 ##################################################################
