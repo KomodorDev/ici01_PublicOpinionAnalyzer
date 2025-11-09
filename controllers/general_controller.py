@@ -16,7 +16,6 @@ from services.prompt_service import PromptService
 from services.analysis_service import run_analysis
 from services.content_fetchers.youtube_fetcher import YouTubeFetcher
 from models.content_models import ContentAnalysis
-from repositories.prompt_template_repository import PromptTemplateRepository
 
 
 ##################################################################
@@ -40,9 +39,7 @@ class GeneralController:
         self.general_service = GeneralService()  # General operations
         self.model_service = ModelService()  # LLM model management
         self.classification_service = ClassificationService()  # Classification groups
-        self.prompt_service = PromptService(  # Prompt template management
-            prompt_template_repository=PromptTemplateRepository()
-        )
+        self.prompt_service = PromptService()  # Prompt template management
         
         # Import and initialize OutputFormatService
         from services.output_format_service import OutputFormatService
@@ -59,7 +56,7 @@ class GeneralController:
         # Fetch available models and pass them to the view. ModelService
         # returns a list of ModelInfo objects; the view will extract
         # display names/ids as needed.
-        models = self.model_service.list_all_models()
+        models = self.model_service.list_all_llm_models()
 
         # Load classification groups and extract names for the view
         try:
