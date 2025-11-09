@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "description": "Global configuration for prompt template system",
+  
+  "reserved_variables": {
+    "CLASSIFICATIONS": {
+      "description": "ALL categories with just ID, label, brief description, and expected output values (minimal format)",
+      "type": "string",
+      "generated_by": "classification_service",
+      "example": "C1 - Taiwanese Nationalism: Support for Taiwan's sovereignty or identity separate from China. [1/0]\n\nC2 - Antipathy Toward China: Criticism or hostility toward PRC government, policies, or people. [1/0]\n\nC3 - Antipathy Toward Taiwan: Negative statements aligned with PRC narratives about Taiwan. [1/0]\n\nC4 - Questioning Video Authenticity: Doubt or suspicion toward the video's bias, accuracy, sources, or editing. [1/0]\n\nC5 - Attitude Toward Other Countries: Trust, support, criticism, or distrust toward third countries. [positive/negative/neutral/0]\n\nC6 - Coordinated Inauthentic Behavior: Patterns or phrasing suggesting coordinated or bot-like activity. [1/0]\n\nC7 - Agreement with Video: Whether comment supports, disagrees with, or is neutral toward the video. [agree/disagree/neutral]"
+    },
+    
+    "CLASSIFICATIONS_INDICATORS": {
+      "description": "ALL categories with comprehensive marking instructions and indicators to guide the LLM",
+      "type": "string",
+      "generated_by": "classification_service",
+      "example": "C1 - Taiwanese Nationalism: Support for Taiwan's sovereignty or identity separate from China.\nMark 1 if the claim is explicit or clearly implied in the Current Comment; otherwise 0.\n\nC2 - Antipathy Toward China: Criticism or hostility toward PRC government, policies, or people.\nMark 1 if explicit or strongly implied in the Current Comment; otherwise 0.\n\nC3 - Antipathy Toward Taiwan: Negative statements aligned with PRC narratives about Taiwan.\nMark 1 if explicit or strongly implied in the Current Comment; otherwise 0.\n\nC4 - Questioning Video Authenticity: Doubt or suspicion toward the video's bias, accuracy, sources, or editing.\nMark 1 if explicit or strongly implied in the Current Comment; otherwise 0.\n\nC5 - Attitude Toward Other Countries: Trust, support, criticism, or distrust toward third countries (e.g., U.S., Japan, allies).\nMark Positive for favorable alignment/support, Mark Negative for distrust/hostility, Mark Neutral for balanced/factual tone, Mark 0 if no countries are mentioned.\n\nC6 - Coordinated Inauthentic Behavior (CIB): Patterns or phrasing suggesting coordinated or bot-like activity.\nMark 1 if any recognizable sign of inauthentic coordination; otherwise 0.\n\nC7 - Agreement with the video's statement:\nMark agree if the comment supports or aligns with the video.\nMark disagree if the comment disagrees with or criticizes the video.\nMark neutral if the comment is unrelated, factual, or shows no clear stance."
+    },
+    
+    "CLASSIFICATIONS_EXPLANATION": {
+      "description": "ALL categories with just a single summary sentence explaining what to evaluate",
+      "type": "string",
+      "generated_by": "classification_service",
+      "example": "C1 - Taiwanese Nationalism: Evaluate whether the comment shows support for Taiwan's sovereignty or identity separate from China.\n\nC2 - Antipathy Toward China: Assess if the comment expresses criticism or hostility toward the PRC government, policies, or people.\n\nC3 - Antipathy Toward Taiwan: Determine if the comment contains negative statements aligned with PRC narratives about Taiwan.\n\nC4 - Questioning Video Authenticity: Check if the comment expresses doubt or suspicion toward the video's bias, accuracy, sources, or editing.\n\nC5 - Attitude Toward Other Countries: Identify the comment's stance toward third countries such as the U.S., Japan, or allies.\n\nC6 - Coordinated Inauthentic Behavior: Look for patterns or phrasing suggesting coordinated or bot-like activity.\n\nC7 - Agreement with Video: Determine whether the comment supports, disagrees with, or remains neutral toward the video's statement."
+    },
+    
+    "OUTPUTFORMAT": {
+      "description": "Dynamically generated JSON output format based on ALL selected classifications",
+      "type": "string",
+      "generated_by": "output_format_service",
+      "example": "{\n  \"C1\": \"1/0\",\n  \"C1_Reason\": \"...\",\n  \"C2\": \"1/0\",\n  \"C2_Reason\": \"...\",\n  \"C3\": \"1/0\",\n  \"C3_Reason\": \"...\",\n  \"C4\": \"1/0\",\n  \"C4_Reason\": \"...\",\n  \"C5\": \"positive/negative/neutral/0\",\n  \"C5_Reason\": \"...\",\n  \"C6\": \"1/0\",\n  \"C6_Reason\": \"...\",\n  \"C7\": \"agree/disagree/neutral\",\n  \"C7_Reason\": \"...\"\n}"
+    }
+  },
+  
+  "variable_syntax": {
+    "format": "[VARIABLE_NAME]",

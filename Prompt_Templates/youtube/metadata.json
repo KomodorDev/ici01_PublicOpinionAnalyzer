@@ -1,0 +1,102 @@
+{
+  "platform": "youtube",
+  "platform_name": "YouTube",
+  "version": "1.0",
+  "last_updated": "2025-11-04",
+  
+  "description": "YouTube platform supports threaded comments with replies and user mentions",
+  
+  "available_fields": {
+    "raw_data": {
+      "description": "Fields directly from YouTube API/scraped data",
+      "fields": [
+        {
+          "field": "VIDEOTITLE",
+          "description": "Title of the YouTube video",
+          "type": "string",
+          "source": "YouTube API",
+          "required": true
+        },
+        {
+          "field": "VIDEODESCRIPTION",
+          "description": "Video description text from creator",
+          "type": "string",
+          "source": "YouTube API",
+          "required": false
+        },
+        {
+          "field": "CHANNELNAME",
+          "description": "Name of the YouTube channel",
+          "type": "string",
+          "source": "YouTube API",
+          "required": false
+        },
+        {
+          "field": "VIDEOURL",
+          "description": "Full URL to the YouTube video",
+          "type": "string",
+          "source": "YouTube API",
+          "required": false
+        },
+        {
+          "field": "TARGETCOMMENT",
+          "description": "The comment text being analyzed",
+          "type": "string",
+          "source": "YouTube API",
+          "required": true
+        },
+        {
+          "field": "COMMENTAUTHOR",
+          "description": "Username of the comment author",
+          "type": "string",
+          "source": "YouTube API",
+          "required": false
+        },
+        {
+          "field": "COMMENTTIMESTAMP",
+          "description": "When the comment was posted (ISO 8601)",
+          "type": "datetime",
+          "source": "YouTube API",
+          "required": false
+        },
+        {
+          "field": "PARENTCOMMENT",
+          "description": "Direct parent comment text if this is a reply",
+          "type": "string",
+          "source": "YouTube API",
+          "required": false
+        }
+      ]
+    },
+    
+    "generated_data": {
+      "description": "AI-generated or processed fields from your system",
+      "fields": [
+        {
+          "field": "VIDEOCONTEXT",
+          "description": "AI-generated summary or key points from video content",
+          "type": "string",
+          "source": "Video Analysis Service (AI)",
+          "required": true,
+          "generation_method": "video_summary"
+        },
+        {
+          "field": "THREADCOMMENTS",
+          "description": "All previous comments in the thread (for A1/A2 replies)",
+          "type": "string",
+          "source": "Comment Thread Service",
+          "required": false,
+          "generation_method": "thread_reconstruction"
+        },
+        {
+          "field": "TAGGEDCOMMENTS",
+          "description": "Comments from users who were tagged/mentioned in TARGETCOMMENT",
+          "type": "string",
+          "source": "Comment Thread Service",
+          "required": false,
+          "generation_method": "mention_extraction"
+        }
+      ]
+    }
+  }
+}
