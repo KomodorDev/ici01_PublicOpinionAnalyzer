@@ -196,7 +196,7 @@ def main():
     try:
         # Create client
         client = provider.create_llm_client(
-            model_id=test_model,
+            model_name=test_model,
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )
