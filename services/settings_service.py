@@ -13,6 +13,7 @@ from config import Config, API_PROVIDERS, LOCAL_PROVIDERS
 
 from services.model_providers.openai_provider import OpenAIProvider
 from services.model_providers.lmstudio_provider import LMStudioProvider
+from services.model_providers.google_provider import GoogleProvider
 
 
 ##################################################################
@@ -128,6 +129,11 @@ class SettingsService:
             if provider_name == "openai":
 
                 provider = OpenAIProvider(self)
+                return provider.test_connection()
+            
+            elif provider_name == "google":
+
+                provider = GoogleProvider(self)
                 return provider.test_connection()
 
             elif provider_name == "lmstudio":
@@ -299,6 +305,9 @@ class SettingsService:
 
         return True, ""
 
+    # ----------------------------------------------------------------
+
+##################################################################
 
 ##################################################################
 # Test Main

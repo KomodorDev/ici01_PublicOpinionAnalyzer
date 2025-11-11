@@ -1,5 +1,4 @@
 # controllers/app_controller.py
-import time
 import gradio as gr
 from controllers.general_controller import GeneralController
 from controllers.classification_controller import ClassificationController
