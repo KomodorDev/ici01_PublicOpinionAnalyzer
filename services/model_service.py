@@ -83,3 +83,24 @@ class ModelService:
     # ----------------------------------------------------------------
 
 ##################################################################
+
+def main():
+    """List all available LLM models across providers."""
+    service = ModelService()
+    models = service.list_all_llm_models()
+
+    print("\n=== Available LLM Models ===")
+    if not models:
+        print("No models found.")
+        return
+
+    for m in models:
+        # Assuming LLMModelInfo has attributes like: name, provider, and description
+        # (adjust field names if they differ)
+        provider = getattr(m, "provider", "unknown")
+        name = getattr(m, "name", "unnamed")
+        desc = getattr(m, "description", "")
+        print(f"- Provider: {provider:10s} | Model: {name:25s} | {desc}")
+
+if __name__ == "__main__":
+    main()

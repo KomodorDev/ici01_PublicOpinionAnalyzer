@@ -195,7 +195,7 @@ def main():
     print(f"Found {len(models)} models.")
     for i, model in enumerate(models, 1):
         print(f"\n  {i}. {model.name}")
-        print(f"     ID: {model.id}")
+        print(f"     ID: {model.name}")
         print(f"     Provider: {model.provider}")
         print(f"     Context Window: {model.context_window}")
         print(f"     Function Calling: {model.supports_function_calling}")

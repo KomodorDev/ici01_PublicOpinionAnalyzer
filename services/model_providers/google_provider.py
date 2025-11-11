@@ -99,26 +99,26 @@ class GoogleProvider(ModelProvider):
                     )
                     models.append(model_info)
 
-            return sorted(models, key=lambda x: x.id)
+            return sorted(models, key=lambda x: x.name)
         except Exception as e:
             print(f"Error fetching Google AI models: {e}")
             return []
 
     # ----------------------------------------------------------------
-    def get_llm_model_info(self, model_id: str) -> Optional[LLMModelInfo]:
+    def get_llm_model_info(self, model_name: str) -> Optional[LLMModelInfo]:
         """
         Get detailed info about a specific Google AI model.
         """
         models = self.list_llm_models()
 
         for model in models:
-            if model.id == model_id:
+            if model.name == model_name:
                 return model
 
         return None
 
     # ----------------------------------------------------------------
-    def create_llm_client(self, model_id: str, **kwargs) -> ChatGoogleGenerativeAI:
+    def create_llm_client(self, model_name: str, **kwargs) -> ChatGoogleGenerativeAI:
         """Create a LangChain ChatGoogleGenerativeAI client."""
         success, message = self.test_connection()
 
@@ -128,7 +128,7 @@ class GoogleProvider(ModelProvider):
             )
 
         return ChatGoogleGenerativeAI(
-            model=model_id,
+            model=model_name,
             google_api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_output_tokens=kwargs.get("max_tokens", None),
@@ -176,7 +176,7 @@ def main():
     print(f"Found {len(models)} models.")
     for i, model in enumerate(models, 1):
         print(f"\n  {i}. {model.name}")
-        print(f"     ID: {model.id}")
+        print(f"     ID: {model.name}")
         print(f"     Provider: {model.provider}")
         print(f"     Context Window: {model.context_window}")
         print(f"     Function Calling: {model.supports_function_calling}")
