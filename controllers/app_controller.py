@@ -48,7 +48,7 @@ class AppController:
         """
         with gr.Blocks(title="AI Public Opinion Analyzer") as demo:
             rerender_tick = gr.State(0)  # 1) dummy state to force re-rendering views
-            
+
             # General tab -------------------------------------------------------------------
             with gr.Tab("General"):
                 self.general_controller.render_general_view()

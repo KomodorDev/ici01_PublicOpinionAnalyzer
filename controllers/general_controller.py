@@ -138,7 +138,7 @@ class GeneralController:
                 and content_analysis.prompt_template_name
             ):
                 content_analysis.prompt_template = (
-                    self.prompt_service.load_prompt_template(
+                    self.prompt_template_service.load_prompt_template(
                         content_analysis.prompt_template_name, content_analysis.platform
                     )
                 )
