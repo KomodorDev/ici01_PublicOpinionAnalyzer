@@ -9,7 +9,8 @@ from typing import List, Optional
 from google import genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from services.model_providers.base_provider import ModelProvider, ModelInfo
+from services.model_providers.base_provider import ModelProvider
+from models.llm_model_info_model import LLMModelInfo
 
 
 ##################################################################
@@ -70,7 +71,7 @@ class GoogleProvider(ModelProvider):
             return False, str(e)
 
     # ----------------------------------------------------------------
-    def list_models(self) -> List[ModelInfo]:
+    def list_llm_models(self) -> List[LLMModelInfo]:
         """List all available Google AI models."""
         success, _ = self.test_connection()
         if not success:
@@ -81,7 +82,7 @@ class GoogleProvider(ModelProvider):
 
             models = []
             response = client.models.list()
-            
+
             for model in response:
                 print(model)
 
@@ -89,8 +90,7 @@ class GoogleProvider(ModelProvider):
                 # Filter to generative models only
                 if hasattr(model, 'name') and 'models/' in model.name:
                     model_id = model.name.replace('models/', '')
-                    model_info = ModelInfo(
-                        id=model_id,
+                    model_info = LLMModelInfo(
                         name=model_id,
                         provider=self.provider_name,
                         context_window=None,
@@ -105,11 +105,11 @@ class GoogleProvider(ModelProvider):
             return []
 
     # ----------------------------------------------------------------
-    def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
+    def get_llm_model_info(self, model_id: str) -> Optional[LLMModelInfo]:
         """
         Get detailed info about a specific Google AI model.
         """
-        models = self.list_models()
+        models = self.list_llm_models()
 
         for model in models:
             if model.id == model_id:
@@ -118,7 +118,7 @@ class GoogleProvider(ModelProvider):
         return None
 
     # ----------------------------------------------------------------
-    def create_client(self, model_id: str, **kwargs) -> ChatGoogleGenerativeAI:
+    def create_llm_client(self, model_id: str, **kwargs) -> ChatGoogleGenerativeAI:
         """Create a LangChain ChatGoogleGenerativeAI client."""
         success, message = self.test_connection()
 
@@ -172,7 +172,7 @@ def main():
         return
 
     print("\nListing models...")
-    models = provider.list_models()
+    models = provider.list_llm_models()
     print(f"Found {len(models)} models.")
     for i, model in enumerate(models, 1):
         print(f"\n  {i}. {model.name}")
@@ -195,7 +195,7 @@ def main():
 
     try:
         # Create client
-        client = provider.create_client(
+        client = provider.create_llm_client(
             model_id=test_model,
             temperature=0.0,  # Deterministic for testing
             max_tokens=10

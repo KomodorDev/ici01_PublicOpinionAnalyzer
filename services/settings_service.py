@@ -130,7 +130,7 @@ class SettingsService:
 
                 provider = OpenAIProvider(self)
                 return provider.test_connection()
-            
+
             elif provider_name == "google":
 
                 provider = GoogleProvider(self)

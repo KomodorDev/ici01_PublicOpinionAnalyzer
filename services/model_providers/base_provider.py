@@ -46,7 +46,6 @@ class ModelProvider(ABC):
         Returns:
             List of LLMModelInfo objects describing available LLM models.
         """
-        pass
 
     # ----------------------------------------------------------------
     @abstractmethod
