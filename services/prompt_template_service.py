@@ -49,7 +49,7 @@ class PromptTemplateService:
             PromptTemplate: Fully parsed dataclass instance.
         """
         return self.prompt_template_repository.load_prompt_template(platform, name)
-    
+
     # ----------------------------------------------------------------
     # LOAD ALL
     def load_all_prompt_templates(self, platform: PlatformEnum) -> List[PromptTemplate]:

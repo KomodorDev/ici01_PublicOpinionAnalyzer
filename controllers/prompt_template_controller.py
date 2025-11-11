@@ -16,7 +16,7 @@ class PromptTemplateController:
     """
 
     def __init__(self):
-        
+
         self.prompt_template_view = PromptTemplateView()
         self.prompt_template_service = PromptTemplateService()
 

@@ -5,7 +5,7 @@ lmstudio_provider.py
 
 Local LM Studio provider — OpenAI-compatible API running on localhost.
 """
-import json
+
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
 import requests
@@ -211,8 +211,8 @@ def main():
 
     try:
         # Create client
-        client = provider.create_client(
-            model_id=test_model,
+        client = provider.create_llm_client(
+            model_name=test_model,
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )

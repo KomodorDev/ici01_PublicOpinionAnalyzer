@@ -103,7 +103,7 @@ class OpenAIProvider(ModelProvider):
                 # Only include models with LLM keywords and exclude certain types
                 if (any(kw in model_id for kw in OPENAI_LLM_KEYWORDS) and
                     not any(kw in model_id for kw in OPENAI_EXCLUDE_KEYWORDS)):
-                    
+
                     models.append(
                         LLMModelInfo(
                             name=model.id,  # Use canonical model id (e.g., "gpt-4")
@@ -151,11 +151,10 @@ class OpenAIProvider(ModelProvider):
 
         return ChatOpenAI(
             model=model_name,
-            api_key=api_key,
+            api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_tokens=kwargs.get("max_tokens", None),
         )
-        
 
     # ----------------------------------------------------------------
 
@@ -196,7 +195,7 @@ def main():
     print(f"Found {len(models)} models.")
     for i, model in enumerate(models, 1):
         print(f"\n  {i}. {model.name}")
-        print(f"     ID: {model.id}")
+        print(f"     ID: {model.name}")
         print(f"     Provider: {model.provider}")
         print(f"     Context Window: {model.context_window}")
         print(f"     Function Calling: {model.supports_function_calling}")
@@ -215,8 +214,8 @@ def main():
 
     try:
         # Create client
-        client = provider.create_client(
-            model_id=test_model,
+        client = provider.create_llm_client(
+            model_name=test_model,
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )
