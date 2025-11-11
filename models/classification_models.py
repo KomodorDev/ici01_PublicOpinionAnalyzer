@@ -63,6 +63,7 @@ class Classification:
     categories: Optional[List[str]] = None
     allow_multiple: Optional[bool] = None
     indicators: Optional[Dict[str, List[str]]] = None
+    require_llm_explanation: bool = False  # If Explanation from LLM is required for this category
 
 ##################################################################
 @dataclass

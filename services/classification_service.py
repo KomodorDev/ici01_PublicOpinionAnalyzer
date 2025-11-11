@@ -123,16 +123,16 @@ class ClassificationService:
         lines = []
         for i, cls in enumerate(classifications, 1):
             lines.append(f"{i}. {cls.question}")
-            
+
             if cls.pro_indicators:
                 lines.append(f"   Positive indicators: {', '.join(cls.pro_indicators[:3])}")
             if cls.con_indicators:
                 lines.append(f"   Negative indicators: {', '.join(cls.con_indicators[:3])}")
             if cls.neutral_indicators:
                 lines.append(f"   Neutral indicators: {', '.join(cls.neutral_indicators[:3])}")
-            
+
             lines.append("")  # Empty line between classifications
-        
+
         return "\n".join(lines)
 
     # ----------------------------------------------------------------
@@ -158,18 +158,18 @@ class ClassificationService:
         for i, cls in enumerate(classifications, 1):
             lines.append(f"{i}. {cls.question}")
             lines.append(f"   Output type: {cls.output_type}")
-            
+
             if cls.output_type == "categorical" and cls.categories:
                 lines.append(f"   Valid categories: {', '.join(cls.categories)}")
-            
+
             lines.append("")
-        
+
         return "\n".join(lines)
 
     # ================================================================
     # Validation
     # ================================================================
-    
+
     # ----------------------------------------------------------------
     def validate_label_for_classification(self,classification: Classification, label: Label) -> bool:
         """

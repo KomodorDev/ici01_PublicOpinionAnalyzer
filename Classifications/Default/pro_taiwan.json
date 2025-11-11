@@ -5,6 +5,7 @@
   "output_type": "categorical",
   "categories": ["pro_Taiwan", "pro_China", "neutral"],
   "allow_multiple": false,
+  "require_llm_explanation": true,
   "indicators": {
     "pro_Taiwan": [
       "Taiwan is a free country",

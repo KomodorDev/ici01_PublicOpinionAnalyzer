@@ -1,6 +1,6 @@
 # services/prompt_service.py
 """
-prompt_service.py
+prompt_runtime_service.py
 =================
 
 Service for managing prompts stored in the file system.
@@ -20,7 +20,7 @@ from models.prompt_template_model import PromptTemplate
 
 
 ##################################################################
-class PromptService:
+class PromptRuntimeService:
     """
     Service for managing and rendering prompt templates.
 
@@ -127,126 +127,11 @@ class PromptService:
         return None
 
     # ================================================================
-    # CRUD Operations (Pass-through to Repository)
-    # ================================================================
-
-    # ----------------------------------------------------------------
-    def load_prompt_template(
-        self, template_name: str, platform: Optional[PlatformEnum] = None
-    ) -> PromptTemplate:
-        """
-        Load a prompt template (with caching).
-
-        Args:
-            platform: PlatformEnum instance (uses default if None)
-            template_name: Template filename (should match PromptTemplate.name)
-
-        Returns:
-            PromptTemplate
-
-        Raises:
-            ValueError: If platform is not specified or set as default
-        """
-        platform = platform or self.platform  # self.platform should be a PlatformEnum
-
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
-
-        # Load from repository (now strictly typed)
-        template = self.prompt_template_repository.load_prompt_template(
-            platform, template_name
-        )
-
-        return template
-
-    # ----------------------------------------------------------------
-    def save_prompt_template(
-        self,
-        platform: PlatformEnum,
-        prompt_model: PromptTemplate,
-        overwrite: bool = False,
-    ) -> str:
-        """
-        Save a prompt template.
-
-        Args:
-            prompt_model: PromptTemplate instance to save
-            platform: PlatformEnum (uses default if None)
-            overwrite: Whether to overwrite existing file
-
-        Returns:
-            Path to saved template
-
-        Raises:
-            ValueError: If platform is not specified or set as default
-        """
-
-        # Save via repository
-        path = self.prompt_template_repository.save_prompt_template(
-            platform, prompt_model, overwrite
-        )
-
-        return path
-
-    # ----------------------------------------------------------------
-    def delete_prompt_template(
-        self, platform: PlatformEnum, template_name: str
-    ) -> bool:
-        """
-        Delete a template.
-
-        Args:
-            template_name: Template filename
-            platform: PlatformEnum
-
-        Returns:
-            True if deleted, False if didn't exist
-        """
-
-        # Delete via repository
-        deleted = self.prompt_template_repository.delete_prompt_template(
-            platform, template_name
-        )
-
-        return deleted
-
-    # ----------------------------------------------------------------
-    def list_all_prompt_template_names(
-        self, platform: Optional[str] = None
-    ) -> List[dict]:
-        """
-        List template names for a platform.
-
-        Args:
-            platform: Platform name (uses default if None)
-
-        Returns:
-            List of template metadata
-        """
-        platform = platform or self.platform
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
-
-        return self.prompt_template_repository.list_all_prompt_template_names(platform)
-
-    # ----------------------------------------------------------------
-    def load_all_prompt_templates(self, platform: Optional[str] = None) -> List[dict]:
-        """
-        Load all templates with full data.
-
-        Args:
-            platform: Optional platform filter
-
-        Returns:
-            List of all templates
-        """
-        return self.prompt_template_repository.load_all_prompt_templates(platform)
-
-    # ================================================================
     # Prompt Creation (Core Functionality)
     # ================================================================
 
     # ----------------------------------------------------------------
+    # WIP
     def create_prompt(self, comment: Comment) -> tuple[str, str]:
         """
         Create a complete prompt ready for LLM using cached data.
@@ -333,6 +218,7 @@ class PromptService:
         return list(set(matches))
 
     # ----------------------------------------------------------------
+    # WIP
     def validate_template(
         self, template_name: str, platform: Optional[str] = None
     ) -> dict:
@@ -399,7 +285,7 @@ def main():
     output_format_service = OutputFormatService()
 
     # Create PromptService
-    prompt_service = PromptService(
+    prompt_service = PromptRuntimeService(
         platform=PlatformEnum.YOUTUBE,
         prompt_template_name="default",
         classification_group_name="Default",

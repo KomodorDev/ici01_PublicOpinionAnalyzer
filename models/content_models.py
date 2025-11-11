@@ -13,11 +13,13 @@ Classes:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from abc import ABC
 
 from enums.platform_enum import PlatformEnum
+from models.classification_models import ClassificationGroup
 from models.label_model import Label
+from models.prompt_template_model import PromptTemplate
 
 ##################################################################
 @dataclass
@@ -123,7 +125,10 @@ class ContentAnalysis:
         comments: All comments associated with this content.
     """
     content: ContentItem
-    comments: List[Comment] = field(default_factory=list)
-    require_reasoning: bool = False  # If True, include explanations/rationales in the answer
 
+    prompt_template: Optional[PromptTemplate] = None
+    classification_group: Optional[ClassificationGroup] = None
+    models: Optional[List[Any]] = None  # Adapt type depending on your model client class
+
+    comments: List[Comment] = field(default_factory=list)
 ##################################################################

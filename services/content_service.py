@@ -10,7 +10,7 @@ from typing import List
 from services.content_fetchers.base_fetcher import ContentFetcher
 from services.content_fetchers.youtube_fetcher import YouTubeFetcher
 from services.content_fetchers.tiktok_fetcher import TikTokFetcher
-from models.content_models import ContentAnalysis
+from models.content_models import Comment, ContentAnalysis
 
 
 ##################################################################
@@ -48,9 +48,53 @@ class ContentService:
         for fetcher in self.fetchers:
             if fetcher.can_handle(url):
                 return fetcher.fetch_content(url)
-        
+
         # No fetcher found
         raise ValueError(f"Unsupported platform or invalid URL: {url}")
+
+    # ----------------------------------------------------------------
+    def fetch_metadata(self, url: str) -> ContentAnalysis:
+        """
+        Fetch metadata for content from any supported platform.
+
+        Args:
+            url: URL of the content whose metadata to fetch.
+
+        Returns:
+            ContentAnalysis object with metadata filled and comments list empty.
+        """
+        # Find the appropriate fetcher
+        for fetcher in self.fetchers:
+            if fetcher.can_handle(url):
+                return fetcher.fetch_metadata(url)
+
+        # No fetcher found
+        raise ValueError(f"Unsupported platform or invalid URL: {url}")
+
+
+    # ----------------------------------------------------------------
+    def fetch_comments(self, url: str) -> list[Comment]:
+        """
+        Fetch comments for content from any supported platform.
+
+        Args:
+            url: URL of the content whose comments to fetch.
+
+        Returns:
+            List of Comment objects associated with the content.
+
+        Raises:
+            ValueError: If platform is not supported or URL is invalid.
+        """
+        # Find the appropriate fetcher
+        for fetcher in self.fetchers:
+            if fetcher.can_handle(url):
+                return fetcher.fetch_comments(url)
+
+        # No fetcher found
+        raise ValueError(f"Unsupported platform or invalid URL: {url}")
+
+
 
     # ----------------------------------------------------------------
     def fetch_multiple(self, urls: List[str]) -> List[ContentAnalysis]:
@@ -71,7 +115,3 @@ class ContentService:
             except ValueError as e:
                 print(f"Error fetching {url}: {e}")
         return results
-
-    # ----------------------------------------------------------------
-    
-##################################################################

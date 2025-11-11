@@ -4,6 +4,7 @@ import gradio as gr
 from controllers.general_controller import GeneralController
 from controllers.classification_controller import ClassificationController
 from controllers.settings_controller import SettingsController
+from controllers.prompt_template_controller import PromptTemplateController
 # Future controllers can be implemented later:
 # from controllers.prompt_controller import PromptController
 # from controllers.advanced_controller import AdvancedController
@@ -30,6 +31,7 @@ class AppController:
         self.general_controller = GeneralController()
         self.classification_controller = ClassificationController()
         self.settings_controller = SettingsController()
+        self.prompt_template_controller = PromptTemplateController()
 
         # Placeholder: initialize other controllers when they are implemented
 
@@ -58,8 +60,7 @@ class AppController:
 
             # Prompt Manager tab -------------------------------------------------------------
             with gr.Tab("Prompt Manager"):
-                gr.Markdown("### Prompt Manager (Coming Soon)")
-                gr.Textbox(label="Edit or swap prompts for LLMs here.")
+                self.prompt_template_controller.render_prompt_template_view()
 
             # Advanced Settings tab ----------------------------------------------------------
             with gr.Tab("Advanced Settings") as adv_tab:
