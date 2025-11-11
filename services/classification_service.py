@@ -1,7 +1,9 @@
 # CRUD for label groups
 # services/classification_service.py
-from typing import List
+from typing import List, Dict
+from enums.classification_output_enum import ClassificationOutputEnum
 from models.classification_models import Classification, ClassificationGroup
+from models.label_model import Label
 from repositories.classification_repository import ClassificationRepository
 
 
@@ -38,6 +40,19 @@ class ClassificationService:
             FileNotFoundError: If group doesn't exist
         """
         return self.repository.load_classification_group(group_name)
+
+    # ----------------------------------------------------------------
+    def get_classification_group(self, group_name: str) -> ClassificationGroup:
+        """
+        Alias for load_classification_group for API consistency.
+        
+        Args:
+            group_name: Name of the classification group folder
+            
+        Returns:
+            ClassificationGroup object
+        """
+        return self.load_classification_group(group_name)
 
     # ----------------------------------------------------------------
     def list_classification_group_names(self) -> List[str]:
@@ -100,16 +115,140 @@ class ClassificationService:
 
     # ----------------------------------------------------------------
     def _format_full(self, classifications: List[Classification]) -> str:
-        """Mock: Format with full details."""
-        return "test_full - Implementation currently missing"
+        """
+        Format classifications with full details (question + indicators).
+        
+        Returns formatted string with numbered questions and example indicators.
+        """
+        lines = []
+        for i, cls in enumerate(classifications, 1):
+            lines.append(f"{i}. {cls.question}")
+
+            if cls.pro_indicators:
+                lines.append(f"   Positive indicators: {', '.join(cls.pro_indicators[:3])}")
+            if cls.con_indicators:
+                lines.append(f"   Negative indicators: {', '.join(cls.con_indicators[:3])}")
+            if cls.neutral_indicators:
+                lines.append(f"   Neutral indicators: {', '.join(cls.neutral_indicators[:3])}")
+
+            lines.append("")  # Empty line between classifications
+
+        return "\n".join(lines)
 
     # ----------------------------------------------------------------
     def _format_indicators(self, classifications: List[Classification]) -> str:
-        """Mock: Format with indicators."""
-        return "test_indicators - Implementation currently missing"
+        """
+        Format classifications with just questions (numbered list).
+        
+        Returns simple numbered list of classification questions.
+        """
+        return "\n".join(
+            f"{i}. {cls.question}"
+            for i, cls in enumerate(classifications, 1)
+        )
 
     # ----------------------------------------------------------------
     def _format_explanation(self, classifications: List[Classification]) -> str:
-        """Mock: Format with explanations."""
-        return "test_explanation - Implementation currently missing"
-##################################################################
+        """
+        Format classifications with explanations of output types.
+        
+        Returns detailed format including expected output type for each classification.
+        """
+        lines = []
+        for i, cls in enumerate(classifications, 1):
+            lines.append(f"{i}. {cls.question}")
+            lines.append(f"   Output type: {cls.output_type}")
+
+            if cls.output_type == "categorical" and cls.categories:
+                lines.append(f"   Valid categories: {', '.join(cls.categories)}")
+
+            lines.append("")
+
+        return "\n".join(lines)
+
+    # ================================================================
+    # Validation
+    # ================================================================
+
+    # ----------------------------------------------------------------
+    def validate_label_for_classification(self,classification: Classification, label: Label) -> bool:
+        """
+        Validates that a given label matches the rules set by a classification.
+        Returns True if valid, else False.
+        If classification.output_type is unknown, returns False.
+        """
+        # Extract value for convenience
+        value = label.value
+        ot = classification.output_type
+
+        # 1. Boolean type check
+        if ot == ClassificationOutputEnum.BOOLEAN:
+            return value in {True, False, None}
+
+        # 2. Probability type check
+        elif ot == ClassificationOutputEnum.PROBABILITY:
+            try:
+                return isinstance(value, (float, int)) and 0.0 <= float(value) <= 1.0
+            except Exception:
+                return False
+
+        # 3. Numeric type check
+        elif ot == ClassificationOutputEnum.NUMERIC:
+            return isinstance(value, (float, int)) or value is None
+
+        # 4. Categorical type check (single or multi-label)
+        elif ot == ClassificationOutputEnum.CATEGORICAL:
+            # Ensure categories are provided
+            if not classification.categories:
+                return False
+            # Multi-label
+            if classification.allow_multiple:
+                if not (isinstance(value, list) or value is None):
+                    return False
+                # Accept None/empty (for unclassified)
+                if value is None:
+                    return True
+                # Ensure all provided labels are allowed
+                return all(v in classification.categories for v in value)
+            # Single-label
+            else:
+                return (value in classification.categories) or (value is None)
+
+        # 5. Text type check (may also allow None)
+        elif ot == ClassificationOutputEnum.TEXT:
+            return isinstance(value, str) or value is None
+
+        # 6. Pairwise/mapping type check
+        elif ot == ClassificationOutputEnum.PAIRWISE:
+            # Accept dicts or None
+            if value is None:
+                return True
+            if not isinstance(value, dict):
+                return False
+            # Optionally: validate dict keys/values (add more rules as required)
+            return True
+
+        # Unknown type
+        else:
+            return False
+
+    # ----------------------------------------------------------------
+    def validate_labels(
+        self,
+        classifications: List[Classification],
+        labels: Dict[str, Label]
+    ) -> Dict[str, bool]:
+        """
+        Validates multiple labels against a list of classifications.
+        Returns a dict mapping classification name to validation status.
+        """
+        results = {}
+        for classification in classifications:
+            label = labels.get(classification.name)
+            if label is not None:
+                results[classification.name] = self.validate_label_for_classification(classification, label)
+            else:
+                results[classification.name] = False  # or None, if missing label
+        return results
+
+    # ----------------------------------------------------------------

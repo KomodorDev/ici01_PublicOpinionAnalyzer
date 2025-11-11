@@ -1,26 +1,20 @@
-# services/llm_providers/base_provider.py
 """
 base_provider.py
 ================
 
 Abstract base class for LLM provider integrations.
+
+Defines the contract for provider implementations, requiring model listing,
+metadata, client creation, and connection testing.
+
+All model info uses the LLMModelInfo structure from your shared models.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Any, Optional
-from dataclasses import dataclass
+from typing import List, Any
+from models.llm_model_info_model import LLMModelInfo
 
 
-##################################################################
-@dataclass
-class ModelInfo:
-    """Information about an available LLM model."""
-    id: str
-    name: str
-    provider: str
-    context_window: Optional[int] = None
-    supports_function_calling: Optional[bool] = None
-    supports_vision: Optional[bool] = None
 
 ##################################################################
 class ModelProvider(ABC):
@@ -45,39 +39,40 @@ class ModelProvider(ABC):
 
     # ----------------------------------------------------------------
     @abstractmethod
-    def list_models(self) -> List[ModelInfo]:
+    def list_llm_models(self) -> List[LLMModelInfo]:
         """
-        Get list of available models from this provider.
-        
+        Get list of available LLM (chat/completion-capable) models from this provider.
+
         Returns:
-            List of ModelInfo objects describing available models.
+            List of LLMModelInfo objects describing available LLM models.
         """
+        pass
 
     # ----------------------------------------------------------------
     @abstractmethod
-    def get_model_info(self, model_id: str) -> ModelInfo:
+    def get_llm_model_info(self, model_name: str) -> LLMModelInfo:
         """
         Get detailed information about a specific model.
-        
+
         Args:
-            model_id: The model identifier.
-            
+            model_name: The model name (as in LLMModelInfo.name).
+
         Returns:
-            ModelInfo object with model details.
+            LLMModelInfo object with model details.
         """
 
     # ----------------------------------------------------------------
     @abstractmethod
-    def create_client(self, model_id: str, **kwargs) -> Any:
+    def create_llm_client(self, model_name: str, **kwargs) -> Any:
         """
         Create an LLM client for the specified model.
-        
+
         Args:
-            model_id: The model identifier.
+            model_name: The model name (as in LLMModelInfo.name).
             **kwargs: Additional configuration options.
-            
+
         Returns:
-            Configured LLM client ready for use.
+            Configured LLM client, ready for use.
         """
 
     # ----------------------------------------------------------------

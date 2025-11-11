@@ -7,7 +7,8 @@ Central service for managing LLM models across providers.
 """
 
 from typing import List, Dict
-from services.model_providers.base_provider import ModelProvider, ModelInfo
+from models.llm_model_info_model import LLMModelInfo
+from services.model_providers.base_provider import ModelProvider
 from services.model_providers.lmstudio_provider import LMStudioProvider
 from services.model_providers.openai_provider import OpenAIProvider
 from services.model_providers.google_provider import GoogleProvider
@@ -34,7 +35,7 @@ class ModelService:
             # "deepseek": DeepSeekProvider(),
         }
     # ----------------------------------------------------------------
-    def list_all_models(self) -> List[ModelInfo]:
+    def list_all_llm_models(self) -> List[LLMModelInfo]:
         """
         Get list of all available models from all providers.
         
@@ -44,21 +45,21 @@ class ModelService:
         all_models = []
         for provider in self.providers.values():
             try:
-                models = provider.list_models()
+                models = provider.list_llm_models()
                 all_models.extend(models)
             except Exception as e:
                 print(f"Error fetching models from {provider}: {e}")
         return all_models
 
     # ----------------------------------------------------------------
-    def list_models_by_provider(self, provider_name: str) -> List[ModelInfo]:
+    def list_llm_models_by_provider(self, provider_name: str) -> List[LLMModelInfo]:
         """Get models from a specific provider."""
         if provider_name not in self.providers:
             raise ValueError(f"Provider '{provider_name}' not configured")
-        return self.providers[provider_name].list_models()
+        return self.providers[provider_name].list_llm_models()
 
     # ----------------------------------------------------------------
-    def get_model_client(self, provider_name: str, model_id: str, **kwargs):
+    def get_llm_model_client(self, provider_name: str, model_name: str, **kwargs):
         """
         Create LLM client for specific model.
         
@@ -72,7 +73,7 @@ class ModelService:
         """
         if provider_name not in self.providers:
             raise ValueError(f"Provider '{provider_name}' not configured")
-        return self.providers[provider_name].create_client(model_id, **kwargs)
+        return self.providers[provider_name].create_llm_client(model_name, **kwargs)
 
     # ----------------------------------------------------------------
     def get_providers(self) -> List[str]:

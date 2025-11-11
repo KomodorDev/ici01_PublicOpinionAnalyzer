@@ -18,7 +18,7 @@ class ClassificationController:
     def render_classification_view(self):
         """Load classification groups from service and render the view."""
         # Load all classification groups from disk
-        groups = self.classification_service.load_all_groups()
+        groups = self.classification_service.load_all_classification_groups()
 
         # Pass data to view for display
         self.classification_view.render_classification_view(groups)

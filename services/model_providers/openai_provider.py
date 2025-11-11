@@ -9,7 +9,12 @@ from typing import List, Optional
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 
-from services.model_providers.base_provider import ModelProvider, ModelInfo
+from services.model_providers.base_provider import ModelProvider
+from models.llm_model_info_model import LLMModelInfo
+from enums.provider_enum import ProviderEnum
+
+OPENAI_LLM_KEYWORDS = ["gpt-", "gpt", "chatgpt", "turbo", "o1-"]
+OPENAI_EXCLUDE_KEYWORDS = ["embedding", "moderation", "whisper", "audio", "dall-e", "vision"]
 
 
 ##################################################################
@@ -71,54 +76,71 @@ class OpenAIProvider(ModelProvider):
 
 
     # ----------------------------------------------------------------
-    def list_models(self) -> List[ModelInfo]:
-        """List all available OpenAI models."""
+    def list_llm_models(self) -> List[LLMModelInfo]:
+        """
+        List all available LLM (chat/completion-capable) models from OpenAI.
+
+        Returns:
+            List[LLMModelInfo]: List of available LLM models.
+
+        Note:
+            Filtering uses keywords that match known OpenAI LLMs and excludes 
+            likely non-LLMs (embeddings, audio, vision, moderation, etc.).
+            This should be updated as OpenAI introduces new models.
+        """
         success, _ = self.test_connection()
         if not success:
             return []
 
         try:
             client = OpenAI(api_key=self.api_key)  # Uses fresh key
-
             models = []
             response = client.models.list()
 
             for model in response.data:
-                # Filter to chat/completion models only
-                if any(keyword in model.id for keyword in ["gpt-", "o1-", "chatgpt"]):
-                    model_info = ModelInfo(
-                        id=model.id,
-                        name=model.id,
-                        provider=self.provider_name,
-                        context_window=None,
-                        supports_function_calling=None,
-                        supports_vision=None,
-                    )
-                    models.append(model_info)
+                model_id = model.id.lower()
 
-            return sorted(models, key=lambda x: x.id)
+                # Only include models with LLM keywords and exclude certain types
+                if (any(kw in model_id for kw in OPENAI_LLM_KEYWORDS) and
+                    not any(kw in model_id for kw in OPENAI_EXCLUDE_KEYWORDS)):
+                    
+                    models.append(
+                        LLMModelInfo(
+                            name=model.id,  # Use canonical model id (e.g., "gpt-4")
+                            provider=ProviderEnum.OPENAI,
+                            display_name=model.id,
+                            description="OpenAI chat/completion model",
+                            context_window=None,  # If available, add with model.get("context_length")
+                            supports_function_calling=None,  # Set True if known for model
+                            supports_vision=None,  # Set True for gpt-4-vision if desired
+                            favorite=False,
+                            is_local=False
+                        )
+                    )
+
+            return sorted(models, key=lambda x: x.name)
         except Exception as e:
-            print(f"Error fetching OpenAI models: {e}")
+            print(f"Error fetching OpenAI LLM models: {e}")
             return []
 
     # ----------------------------------------------------------------
-    def get_model_info(self, model_id: str) -> Optional[ModelInfo]:
+    def get_llm_model_info(self, model_name: str) -> Optional[LLMModelInfo]:
         """
         Get detailed info about a specific OpenAI model.
         
         Note: OpenAI API doesn't provide model capabilities metadata.
         This returns basic info only. To be implemented with static mappings later.
         """
-        models = self.list_models()
+        models = self.list_llm_models()
 
         for model in models:
-            if model.id == model_id:
+            if model.name == model_name:
                 return model
 
         return None
 
     # ----------------------------------------------------------------
-    def create_client(self, model_id: str, **kwargs) -> ChatOpenAI:
+    def create_llm_client(self, model_name: str, **kwargs) -> ChatOpenAI:
         """Create a LangChain ChatOpenAI client."""
         success, message = self.test_connection()
 
@@ -128,11 +150,12 @@ class OpenAIProvider(ModelProvider):
             )
 
         return ChatOpenAI(
-            model=model_id,
-            api_key=self.api_key,
+            model=model_name,
+            api_key=api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_tokens=kwargs.get("max_tokens", None),
         )
+        
 
     # ----------------------------------------------------------------
 
@@ -169,7 +192,7 @@ def main():
         return
 
     print("\nListing models...")
-    models = provider.list_models()
+    models = provider.list_llm_models()
     print(f"Found {len(models)} models.")
     for i, model in enumerate(models, 1):
         print(f"\n  {i}. {model.name}")

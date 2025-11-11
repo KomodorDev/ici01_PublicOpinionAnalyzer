@@ -29,7 +29,6 @@ class ContentFetcher(ABC):
         Returns:
             True if this fetcher supports the platform, False otherwise.
         """
-        pass
 
     @abstractmethod
     def fetch_content(self, url: str) -> ContentAnalysis:
@@ -45,6 +44,34 @@ class ContentFetcher(ABC):
         Raises:
             ValueError: If URL is invalid or content not found.
         """
-        pass
 
+    @abstractmethod
+    def fetch_metadata(self, url: str):
+        """
+        Fetch only metadata (not comments) for the content from the platform.
+
+        Args:
+            url: The content URL to fetch.
+
+        Returns:
+            ContentItem object containing only basic metadata.
+
+        Raises:
+            ValueError: If URL is invalid or content not found.
+        """
+
+    @abstractmethod
+    def fetch_comments(self, url: str):
+        """
+        Fetch only the comments for the given content URL from the platform.
+
+        Args:
+            url: The content URL whose comments to fetch.
+
+        Returns:
+            List of Comment objects associated with the content.
+
+        Raises:
+            ValueError: If URL is invalid or comments not found.
+        """
 ##################################################################

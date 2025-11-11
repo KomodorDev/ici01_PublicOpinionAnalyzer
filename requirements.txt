@@ -1,2 +1,42 @@
 # requirements.txt
-yt-dlp>=2025.10.0
+# =====================================================
+# Public Opinion Analyzer Dependencies
+# =====================================================
+
+# ==================== Core Framework ====================
+# LangChain & LangGraph for LLM orchestration
+langgraph>=0.2.0              # LangGraph for multi-model parallel processing
+langchain-core>=0.3.0         # LangChain core components (messages, etc.)
+langchain-openai>=0.2.0       # LangChain OpenAI integration
+
+# ==================== LLM Providers ====================
+openai>=1.50.0                # OpenAI API client
+
+# Optional: Uncomment if using Google Gemini
+# langchain-google-genai>=2.0.0
+
+# ==================== Web Interface ====================
+gradio>=4.0.0                 # Web UI framework
+
+# ==================== Content Fetching ====================
+yt-dlp>=2024.10.0             # YouTube content and comments fetcher
+requests>=2.31.0              # HTTP requests for API calls
+
+# ==================== Configuration & Security ====================
+python-dotenv>=1.0.0          # Environment variable management from .env files
+keyring>=24.0.0               # Secure storage for API keys
+
+# ==================== Type Support ====================
+typing-extensions>=4.8.0      # Extended typing support (TypedDict, etc.)
+
+# ==================== Data Processing ====================
+# Standard library modules used: json, dataclasses, abc, pathlib, re
+# No additional dependencies needed for data processing
+
+# ==================== Development & Testing ====================
+# Uncomment for development
+# pytest>=7.4.0               # Testing framework
+# pytest-mock>=3.12.0         # Mock support for pytest
+# black>=23.0.0               # Code formatter
+# flake8>=6.1.0               # Linter
+# mypy>=1.7.0                 # Type checker

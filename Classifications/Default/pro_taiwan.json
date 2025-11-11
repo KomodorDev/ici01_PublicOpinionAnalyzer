@@ -1,16 +1,22 @@
 {
   "name": "pro_taiwan",
   "question": "Is the comment pro‑Taiwan?",
-  "output_type": "boolean",
-  "pro_indicators": [
-    "Taiwan is a free country",
-    "Support Taiwan democracy"
-  ],
-  "con_indicators": [
-    "China should control Taiwan",
-    "Taiwan isn't independent"
-  ],
-  "neutral_indicators": [
-    "Neutral reporting about Taiwan"
-  ]
+  "explanation": "This classification determines whether the comment expresses support for Taiwan (pro-Taiwan), opposition (pro-China), or takes a neutral or ambiguous stance.",
+  "output_type": "categorical",
+  "categories": ["pro_Taiwan", "pro_China", "neutral"],
+  "allow_multiple": false,
+  "require_llm_explanation": true,
+  "indicators": {
+    "pro_Taiwan": [
+      "Taiwan is a free country",
+      "Support Taiwan democracy"
+    ],
+    "pro_China": [
+      "China should control Taiwan",
+      "Taiwan isn't independent"
+    ],
+    "neutral": [
+      "Neutral reporting about Taiwan"
+    ]
+  }
 }
