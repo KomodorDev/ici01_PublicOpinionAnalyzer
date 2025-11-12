@@ -81,7 +81,7 @@ class PromptTemplate:
 
         Returns:
             dict: A machine-readable representation of this prompt template,
-            ready for JSON serialization or repository persistence. The output
+            ready for JSON serialization or repository persistence. The output dictionary contains all template fields in a format suitable for JSON serialization, including the platform as a string and the last_updated timestamp in ISO 8601 format.
 
         Example output::
             {
