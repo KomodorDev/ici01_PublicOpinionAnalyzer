@@ -14,7 +14,7 @@ through controller/service layers as neutral Python dictionaries.
 
 Typical usage example::
 
-    from models.prompt_model import PromptTemplate
+    from models.prompt_template_model import PromptTemplate
     from enums.platform_enum import PlatformEnum
     from datetime import datetime, timezone
 
