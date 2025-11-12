@@ -28,7 +28,7 @@ from __future__ import annotations
 from typing import Callable, Dict, List, Optional
 import gradio as gr
 
-CREATE_SENTINEL = "Create new template…"
+CREATE_SENTINEL = "➕ Create new template…"
 
 
 ##################################################################
