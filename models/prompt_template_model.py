@@ -25,7 +25,7 @@ Typical usage example::
         version="1.0",
         description="Classifies comment sentiment into positive/neutral/negative.",
         system_prompt="You are a sentiment analysis assistant...",
-        user_prompt="Classify the following comment: {comment}",,
+        user_prompt="Classify the following comment: {comment}",
     )
 
     # Serialize to dict for saving
