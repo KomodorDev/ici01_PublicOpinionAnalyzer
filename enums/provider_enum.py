@@ -12,8 +12,9 @@ Usage example:
 """
 
 from enum import Enum
+from typing import List
 
-class ProviderEnum(Enum):
+class ProviderEnum(str,Enum):
     """
     Enumeration of supported LLM/model service providers.
 
@@ -36,12 +37,21 @@ class ProviderEnum(Enum):
     GOOGLE = "google"
     LMSTUDIO = "lmstudio"
     OLLAMA = "ollama"
+    
+    @classmethod
+    def from_str(cls, value: str) -> "ProviderEnum":
+        """Convert a string to a ProviderEnum (case-insensitive)."""
+        if not value:
+            raise ValueError("Provider cannot be empty")
+        for member in cls:
+            if member.value.lower() == value.lower():
+                return member
+        raise ValueError(f"Unknown provider: {value}")
 
-    def __str__(self):
-        """
-        Returns the string value of the provider for serialization or display.
+    @classmethod
+    def to_list(cls) -> List[str]:
+        """Return all provider string values (for UI dropdowns, etc.)."""
+        return [p.value for p in cls]
 
-        Returns:
-            str: The provider identifier (e.g., 'openai', 'anthropic').
-        """
+    def __str__(self) -> str:
         return self.value

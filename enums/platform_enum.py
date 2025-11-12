@@ -11,9 +11,10 @@ Usage:
     platform = PlatformEnum.YOUTUBE
 """
 
+from typing import List
 from enum import Enum
 
-class PlatformEnum(Enum):
+class PlatformEnum(str,Enum):
     """
     Enumeration of supported content platforms for prompt templates and analysis.
 
@@ -34,16 +35,27 @@ class PlatformEnum(Enum):
         >>> str(Platform.YOUTUBE)
         'youtube'
     """
+
     YOUTUBE = "youtube"
     TWITTER = "twitter"
     REDDIT = "reddit"
     # Add more platforms as needed
+    
+    @classmethod
+    def from_str(cls, value: str) -> "PlatformEnum":
+        """Convert a string to a Platform enum (case-insensitive)."""
+        if not value:
+            raise ValueError("Platform cannot be empty")
+        for member in cls:
+            if member.value.lower() == value.lower():
+                return member
+        raise ValueError(f"Unknown platform: {value}")
+
+
+    @classmethod
+    def to_list(cls) -> List[str]:
+        """Return all platform string values (for UI dropdowns, etc.)."""
+        return [p.value for p in cls]
 
     def __str__(self) -> str:
-        """
-        Return the string representation of the enum member.
-
-        Returns:
-            str: The value for this platform (e.g., 'youtube').
-        """
         return self.value
