@@ -260,8 +260,6 @@ class PromptTemplateController:
         platforms = PlatformEnum.to_list()
 
         # List all templates for the selected/default platform
-        print("plat =", plat, "| type:", type(plat), "| str:", str(plat))
-
         names = self.prompt_template_service.list_all_prompt_template_names(plat)
 
         # Load the first template (if any) so the view shows something populated on load
