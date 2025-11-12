@@ -14,7 +14,7 @@ Usage:
 from typing import List
 from enum import Enum
 
-class PlatformEnum(str,Enum):
+class PlatformEnum(str, Enum):
     """
     Enumeration of supported content platforms for prompt templates and analysis.
 
