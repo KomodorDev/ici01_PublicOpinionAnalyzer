@@ -37,7 +37,7 @@ class ProviderEnum(str,Enum):
     GOOGLE = "google"
     LMSTUDIO = "lmstudio"
     OLLAMA = "ollama"
-    
+
     @classmethod
     def from_str(cls, value: str) -> "ProviderEnum":
         """Convert a string to a ProviderEnum (case-insensitive)."""

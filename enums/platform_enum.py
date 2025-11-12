@@ -40,7 +40,7 @@ class PlatformEnum(str,Enum):
     TWITTER = "twitter"
     REDDIT = "reddit"
     # Add more platforms as needed
-    
+
     @classmethod
     def from_str(cls, value: str) -> "PlatformEnum":
         """Convert a string to a Platform enum (case-insensitive)."""
