@@ -6,7 +6,6 @@ prompt_template_repository.py
 import json
 from pathlib import Path
 from typing import List, Optional
-from dataclasses import asdict
 from datetime import datetime, timezone
 
 from enums.platform_enum import PlatformEnum
@@ -27,50 +26,16 @@ class PromptTemplateRepository:
         self, platform: PlatformEnum, template_name: str
     ) -> PromptTemplate:
         """
-        Load a single prompt template.
-
-        Args:
-            platform: Platform enum (e.g., PlatformEnum.YOUTUBE)
-            template_name: Template filename without .json
-
-        Returns:
-            PromptTemplate instance
-
-        Raises:
-            FileNotFoundError: If template doesn't exist
+        Load a single prompt template from disk (platform + name).
         """
-        
-        # Get path
         template_path = self._get_prompt_template_path(platform, template_name)
         if not template_path.exists():
             raise FileNotFoundError(f"Template not found: {template_path}")
 
-        # Get template_data
         with open(template_path, "r", encoding="utf-8") as f:
-            template_data = json.load(f)
+            data = json.load(f)
 
-        # Coerce platform (str) -> PlatformEnum
-        plat = template_data.get("platform")
-        template_data["platform"] = plat if isinstance(plat, PlatformEnum) else PlatformEnum(plat)
-
-        # Coerce last_updated (ISO string) -> datetime (UTC)
-        lu = template_data.get("last_updated")
-        if isinstance(lu, str):
-            # accept ...Z or ...+00:00
-            if lu.endswith("Z"):
-                lu = lu.replace("Z", "+00:00")
-            template_data["last_updated"] = datetime.fromisoformat(lu).astimezone(timezone.utc)
-        elif lu is None:
-            template_data["last_updated"] = datetime.now(timezone.utc)
-
-        # Ensure required_variables is a list (defensive)
-        rv = template_data.get("required_variables")
-        if rv is None:
-            template_data["required_variables"] = []
-        elif not isinstance(rv, list):
-            template_data["required_variables"] = list(rv)
-
-        return PromptTemplate(**template_data)
+        return PromptTemplate.from_dict(data)
 
     # ----------------------------------------------------------------
     # LOAD ALL
@@ -86,7 +51,7 @@ class PromptTemplateRepository:
         Returns:
             List of PromptTemplate instances
         """
-        
+
         # Initialize empty list for all loaded templates
         templates: List[PromptTemplate] = []
 
@@ -98,18 +63,18 @@ class PromptTemplateRepository:
         # Iterate through all selected platforms
         for plat in platforms:
             platform_path = self.base_path / str(plat)
-            
+
             # Skip if the directory for that platform does not exist
             if not platform_path.exists():
                 continue
 
             # Iterate through all JSON files in this platform folder
             for file in platform_path.glob("*.json"):
-                
+
                 # Skip any metadata.json files (not a real prompt template)
                 if file.name == "metadata.json":
                     continue
-                
+
                 # Load the template using the single-file loader
                 # This ensures platform enums and datetimes are parsed consistently
                 try:
@@ -130,9 +95,8 @@ class PromptTemplateRepository:
     # CREATE / UPDATE
     def save_prompt_template(
         self,
-        platform: PlatformEnum,
         prompt_model: PromptTemplate,
-        overwrite: bool = False
+        overwrite: bool = False,
     ) -> str:
         """
         Save a prompt template to disk as JSON.
@@ -140,40 +104,48 @@ class PromptTemplateRepository:
         - Updates `last_updated` to current UTC time.
         - Creates platform directory if missing.
         - Optionally protects against overwriting existing templates.
-        """
-        
-        # Get filename from template name
-        template_name = prompt_model.name
-        
-        # Build full save path (e.g. Prompt_Templates/youtube/template.json)
-        template_path = self._get_prompt_template_path(platform, template_name)
+        - Uses the model's canonical `to_dict()` serializer for persistence.
 
-        # Stop if file exists and overwrite is not allowed
+        Args:
+            prompt_model (PromptTemplate): The prompt template model to save.
+            overwrite (bool): If True, replaces existing file.
+
+        Returns:
+            str: Absolute path to the saved JSON file.
+        """
+
+        # Validate required fields
+        if not prompt_model.name:
+            raise ValueError("Template name is required to save the file.")
+        if not prompt_model.platform:
+            raise ValueError("Platform is missing from prompt_model.")
+
+        # Resolve platform directly from model
+        platform = prompt_model.platform
+
+        # Derive file path (e.g. Prompt_Templates/youtube/<template_name>.json)
+        template_path = self._get_prompt_template_path(platform, prompt_model.name)
+
+        # Guard against accidental overwrite
         if template_path.exists() and not overwrite:
             raise FileExistsError(
                 f"Template already exists: {template_path}. Use overwrite=True to replace."
             )
 
-        # Update modification timestamp
+        # Update last modification time
         prompt_model.last_updated = datetime.now(timezone.utc)
 
-        # Convert dataclass to dict for JSON serialization
-        data = asdict(prompt_model)
-        
-        # Ensure enum and datetime fields are stored as strings
-        data["platform"] = str(prompt_model.platform)       # PlatformEnum -> str
-        data["last_updated"] = prompt_model.last_updated.isoformat()
+        # Serialize using the model's canonical schema
+        data = prompt_model.to_dict()
 
-        # Create platform directory if it doesn’t exist
+        # Ensure platform directory exists
         template_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Write the JSON file to disk
+
+        # Write to disk
         with open(template_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-        # Return the saved file path as string
         return str(template_path)
-
 
     # ----------------------------------------------------------------
     # DELETE
@@ -195,7 +167,7 @@ class PromptTemplateRepository:
             return False
         template_path.unlink()
         return True
-    
+
     # ----------------------------------------------------------------
     # LIST PROMPT TEMPLATE NAMES
     def list_all_prompt_template_names(
@@ -236,15 +208,20 @@ class PromptTemplateRepository:
     # ----------------------------------------------------------------
 
     # ----------------------------------------------------------------
-    def _get_prompt_template_path(self, platform: PlatformEnum, template_name: str) -> Path:
+    def _get_prompt_template_path(
+        self, platform: PlatformEnum, template_name: str
+    ) -> Path:
         """Get full path to template file."""
         return self.base_path / str(platform) / f"{template_name}.json"
 
     # ----------------------------------------------------------------
-    def prompt_template_exists(self, platform: PlatformEnum, template_name: str) -> bool:
+    def prompt_template_exists(
+        self, platform: PlatformEnum, template_name: str
+    ) -> bool:
         """Check if a template exists."""
         return self._get_prompt_template_path(platform, template_name).exists()
 
     # ----------------------------------------------------------------
+
 
 ##################################################################
