@@ -14,7 +14,7 @@ Usage example:
 from enum import Enum
 from typing import List
 
-class ProviderEnum(str,Enum):
+class ProviderEnum(str, Enum):
     """
     Enumeration of supported LLM/model service providers.
 
