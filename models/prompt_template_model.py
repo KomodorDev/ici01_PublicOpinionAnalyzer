@@ -73,7 +73,7 @@ class PromptTemplate:
     description: str
     system_prompt: str
     user_prompt: str
-    last_updated: datetime = field(default_factory=datetime.now(timezone.utc))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         """
