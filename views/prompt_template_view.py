@@ -231,7 +231,7 @@ class PromptTemplateView:
             opt = "\n".join((tpl_or_rules or {}).get("placeholders_optional", []) or [])
 
             desired = nm or CREATE_SENTINEL
-            value = desired if (desired in choices) else choices[0]  # inline coercion
+            value = desired if (desired in choices) else choices[0]  # Ensure selected value exists in choices, otherwise default to first choice
 
             del_enabled = value != CREATE_SENTINEL
             return (
