@@ -149,7 +149,7 @@ class PromptTemplate:
         )
 
         return cls(
-            name=d["name"],
+            name=(d.get("name") or "").strip(),
             platform=platform,
             version=d.get("version", ""),
             description=d.get("description", ""),
