@@ -17,7 +17,7 @@ This schema is designed for extensibility, allowing robust validation and prompt
 
 from enum import Enum
 
-class ClassificationOutputEnum(Enum):
+class ClassificationOutputEnum(str, Enum):
     """
     Defines the possible output types for classification tasks.
 
