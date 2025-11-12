@@ -89,7 +89,7 @@ class PromptTemplateService:
         self.prompt_template_repository = PromptTemplateRepository()
 
         # Platform rules (inline for now)
-        self._rx = re.compile(r"\[([A-Za-z_][A-Za-z0-9_]*)\]")  # always [PLACEHOLDER]
+        self._rx = re.compile(r"\[([A-Za-z_][A-Za-z0-9_]*)\]")  # Matches placeholders like [PLACEHOLDER], [SOME_VAR], etc.
 
         self._required_placeholders: Dict[PlatformEnum, List[PlaceholderEnum]] = {
             PlatformEnum.YOUTUBE: [
