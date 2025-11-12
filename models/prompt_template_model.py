@@ -1,6 +1,6 @@
 """
-prompt_model.py
-===============
+prompt_template_model.py
+========================
 
 Data model for prompt templates used in LLM-driven classification workflows.
 
