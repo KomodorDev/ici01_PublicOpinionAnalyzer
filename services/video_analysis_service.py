@@ -7,8 +7,11 @@ Service for analyzing YouTube videos using various AI providers.
 """
 from typing import Optional, List, Dict, Any
 
+from enums import ProviderEnum
+from models.domain.video_model_info_model import VideoModelInfo
 from services.video_analysis.base_adapter import VideoAnalysisAdapter
 from services.video_analysis.google_adapter import GoogleAdapter
+from services import SettingsService, ModelService
 
 
 ##################################################################
@@ -17,45 +20,51 @@ class VideoAnalysisService:
 
     # Map of provider names to their adapters
     ADAPTER_REGISTRY = {
-        'google': GoogleAdapter,
-        'gemini': GoogleAdapter,  # Alias
+        "google": GoogleAdapter,
+        "gemini": GoogleAdapter,  # Alias
     }
 
     # Models that support video analysis
     VIDEO_CAPABLE_MODELS = {
-        'google': [
-            'gemini-2.0-flash-exp',
+        "google": [
+            "gemini-2.0-flash-exp",
         ]
     }
 
     # ----------------------------------------------------------------
-    def __init__(self, model_service, settings_service=None):
+    def __init__(
+        self,
+        model_service=None,
+        settings_service=None,
+    ):
         """
         Initialize video analysis service.
-        
+
         Args:
-            model_service: ModelService instance for getting LLM clients
-            settings_service: SettingsService instance for configuration access.
-                            If None, creates a new instance.
+            model_service: optional ModelService instance. If None, create one.
+            settings_service: optional SettingsService instance. If None, create one.
         """
+
+        # Lazy import to avoid circular dependencies if needed
+        if model_service is None:
+            model_service = ModelService()
         self.model_service = model_service
-        
-        # Use provided settings service or create new one
+
         if settings_service is None:
-            from services.settings_service import SettingsService  # pylint: disable=import-outside-toplevel
             settings_service = SettingsService()
-        
         self.settings_service = settings_service
-        self._adapters = {}  # Cache adapters
+
+        # Adapter cache
+        self._adapters = {}
 
     # ----------------------------------------------------------------
     def _get_adapter(self, provider: str) -> VideoAnalysisAdapter:
         """
         Get or create adapter for provider.
-        
+
         Args:
             provider: Provider name
-            
+
         Returns:
             Adapter instance
         """
@@ -65,7 +74,7 @@ class VideoAnalysisService:
             adapter_class = self.ADAPTER_REGISTRY.get(provider)
 
             if not adapter_class:
-                available = ', '.join(self.ADAPTER_REGISTRY.keys())
+                available = ", ".join(self.ADAPTER_REGISTRY.keys())
                 raise ValueError(
                     f"Unknown provider: {provider}. "
                     f"Available providers: {available}"
@@ -76,42 +85,32 @@ class VideoAnalysisService:
         return self._adapters[provider]
 
     # ----------------------------------------------------------------
-    def list_available_models(self) -> List[Dict[str, Any]]:
+    def list_available_video_models(self) -> List[VideoModelInfo]:
         """
-        List all models that support video analysis.
-        
-        Returns:
-            List of dicts with model information:
-            [
-                {
-                    'provider': 'google',
-                    'model_id': 'gemini-1.5-flash',
-                    'supports_native_video': True,
-                    'available': True
-                },
-                ...
-            ]
+        Return all models that support video analysis,
+        represented as VideoModelInfo domain models.
         """
-        available_models = []
+        models: list[VideoModelInfo] = []
 
-        for provider, model_ids in self.VIDEO_CAPABLE_MODELS.items():
-            # Check if provider is configured
-            try:
-                self._get_adapter(provider)
-                provider_available = True
-            except Exception:
-                provider_available = False
+        for provider_key, model_ids in self.VIDEO_CAPABLE_MODELS.items():
+
+            # Convert provider (str or enum) → ProviderEnum
+            if isinstance(provider_key, ProviderEnum):
+                provider_enum = provider_key
+            else:
+                provider_enum = ProviderEnum(provider_key)
 
             for model_id in model_ids:
-                model_info = {
-                    'provider': provider,
-                    'model_id': model_id,
-                    'supports_native_video': True,  # All listed models support it
-                    'available': provider_available
-                }
-                available_models.append(model_info)
+                models.append(
+                    VideoModelInfo(
+                        name=model_id,
+                        provider=provider_enum,
+                        display_name=model_id,
+                        supports_native_video=True,
+                    )
+                )
 
-        return available_models
+        return models
 
     # ----------------------------------------------------------------
     def summarize(
@@ -121,11 +120,11 @@ class VideoAnalysisService:
         model_id: str,
         custom_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Summarize a YouTube video.
-        
+
         Args:
             video_url: YouTube video URL
             provider: Provider name ('google', 'gemini')
@@ -133,7 +132,7 @@ class VideoAnalysisService:
             custom_prompt: Optional custom summarization prompt
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
-            
+
         Returns:
             Video summary as text
         """
@@ -157,11 +156,11 @@ class VideoAnalysisService:
         model_id: str,
         custom_prompt: str,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Analyze video with custom prompt.
-        
+
         Args:
             video_url: YouTube video URL
             provider: Provider name
@@ -169,7 +168,7 @@ class VideoAnalysisService:
             custom_prompt: Custom analysis prompt
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
-            
+
         Returns:
             Analysis result as text
         """
@@ -181,7 +180,7 @@ class VideoAnalysisService:
 
         # Get adapter
         adapter = self._get_adapter(provider)
-        
+
         # Execute analysis with model_id
         return adapter.analyze(video_url, model_id, custom_prompt, max_tokens)
 
@@ -192,18 +191,18 @@ class VideoAnalysisService:
         provider: str,
         model_id: str,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Extract key points from video.
-        
+
         Args:
             video_url: YouTube video URL
             provider: Provider name
             model_id: Model identifier
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
-            
+
         Returns:
             Key points as text
         """
@@ -220,18 +219,18 @@ class VideoAnalysisService:
         provider: str,
         model_id: str,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Get a detailed transcript-style summary.
-        
+
         Args:
             video_url: YouTube video URL
             provider: Provider name
             model_id: Model identifier
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
-            
+
         Returns:
             Transcript summary
         """
@@ -246,11 +245,11 @@ class VideoAnalysisService:
     def _is_video_capable(self, provider: str, model_id: str) -> bool:
         """
         Check if a model supports video analysis.
-        
+
         Args:
             provider: Provider name
             model_id: Model identifier
-            
+
         Returns:
             True if model supports video
         """
@@ -264,19 +263,21 @@ class VideoAnalysisService:
         """Get list of supported providers."""
         return list(cls.ADAPTER_REGISTRY.keys())
 
+
 ##################################################################
+
 
 ##################################################################
 # Test Main
 ##################################################################
 def main():
     """Test the VideoAnalysisService."""
-    print("="*60)
+    print("=" * 60)
     print("Testing VideoAnalysisService")
-    print("="*60)
+    print("=" * 60)
 
     # Import here to avoid circular dependencies
-    from services.model_service import ModelService
+
 
     # Create services
     print("\nInitializing services...")
@@ -290,32 +291,34 @@ def main():
 
     # List available models
     print("\nAvailable video-capable models:")
-    models = video_service.list_available_models()
+    models = video_service.list_available_video_models()
     for i, model in enumerate(models, 1):
-        status = "✅ Available" if model['available'] else "❌ Not configured"
+        status = "✅ Available" if model["available"] else "❌ Not configured"
         print(f"\n  {i}. {model['provider']}/{model['model_id']}")
         print(f"     Status: {status}")
         print(f"     Native video: {model['supports_native_video']}")
 
     # Check if any models are available
-    available_models = [m for m in models if m['available']]
+    available_models = [m for m in models if m["available"]]
     if not available_models:
         print("\n⚠️  No video-capable models configured!")
         print("Please configure API keys in Settings.")
         return
 
     # Test video analysis
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Video Analysis Test")
-    print("="*60)
+    print("=" * 60)
 
-    video_url = input("\nEnter YouTube URL to analyze (or press Enter to skip): ").strip()
+    video_url = input(
+        "\nEnter YouTube URL to analyze (or press Enter to skip): "
+    ).strip()
 
     if video_url:
         # Use first available model
         test_model = available_models[0]
-        provider = test_model['provider']
-        model_id = test_model['model_id']
+        provider = test_model["provider"]
+        model_id = test_model["model_id"]
 
         print(f"\nUsing: {provider}/{model_id}")
 
@@ -323,9 +326,7 @@ def main():
             # Test summarization
             print("\n📹 Generating summary...")
             summary = video_service.summarize(
-                video_url=video_url,
-                provider=provider,
-                model_id=model_id
+                video_url=video_url, provider=provider, model_id=model_id
             )
 
             print("\n✅ Summary:")
@@ -336,9 +337,7 @@ def main():
             # Test key points extraction
             print("\n📝 Extracting key points...")
             key_points = video_service.get_key_points(
-                video_url=video_url,
-                provider=provider,
-                model_id=model_id
+                video_url=video_url, provider=provider, model_id=model_id
             )
 
             print("\n✅ Key Points:")
@@ -349,11 +348,12 @@ def main():
         except Exception as e:
             print(f"\n❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Test complete!")
-    print("="*60)
+    print("=" * 60)
 
 
 if __name__ == "__main__":
