@@ -30,12 +30,18 @@ class LLMModelInfo:
         is_local:                    Boolean—True for local-hosted, False for API-based models.
 
     """
+    # Core identity
     name: str
     provider: ProviderEnum
+    
+    # Display/UI helpers
     display_name: str = ""
     description: str = ""
+    favorite: bool = False
+    is_local: bool = False
+    
+    # Capabilities
     context_window: Optional[int] = None
     supports_function_calling: Optional[bool] = None
     supports_vision: Optional[bool] = None
-    favorite: bool = False
-    is_local: bool = False
+

@@ -17,9 +17,11 @@ from typing import Any, Dict, List, Optional
 from abc import ABC
 
 from enums.platform_enum import PlatformEnum
-from models.classification_models import ClassificationGroup
-from models.label_model import Label
-from models.prompt_template_model import PromptTemplate
+from enums.sort_by_enum import SortByEnum
+from enums.sort_dir_enum import SortDirEnum
+from models.domain.classification_models_OLD import ClassificationGroup
+from models.domain.label_model import Label
+from models.domain.prompt_template_model import PromptTemplate
 
 ##################################################################
 @dataclass
@@ -131,4 +133,24 @@ class ContentAnalysis:
     models: Optional[List[Any]] = None  # Adapt type depending on your model client class
 
     comments: List[Comment] = field(default_factory=list)
+
+    sort_by: SortByEnum
+    sort_dir: SortDirEnum
+    limit: int                       # e.g. 20 / 50 / 100 / 1000
+    
+    @property
+    def platform(self) -> PlatformEnum:
+        """Unique ID part 1 — platform namespace (e.g., youtube, tiktok)."""
+        return self.content.platform
+
+    @property
+    def content_id(self) -> str:
+        """Unique ID part 2 — platform-specific unique content identifier."""
+        return self.content.content_id
+
+    @property
+    def url(self) -> str:
+        """Convenience: direct access to the canonical URL."""
+        return self.content.url
+
 ##################################################################
