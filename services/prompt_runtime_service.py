@@ -14,8 +14,7 @@ from enums.platform_enum import PlatformEnum
 from repositories.prompt_template_repository import PromptTemplateRepository
 from services.classification_service import ClassificationService
 from services.output_format_service import OutputFormatService
-from models.content_models import ContentItem, Comment
-from models.prompt_template_model import PromptTemplate
+from models.domain import ContentItem, Comment, PromptTemplate
 
 
 

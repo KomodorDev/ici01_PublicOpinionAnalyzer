@@ -7,7 +7,7 @@ Central service for managing LLM models across providers.
 """
 
 from typing import List, Dict
-from models.llm_model_info_model import LLMModelInfo
+from models.domain import LLMModelInfo
 from services.model_providers.base_provider import ModelProvider
 from services.model_providers.lmstudio_provider import LMStudioProvider
 from services.model_providers.openai_provider import OpenAIProvider

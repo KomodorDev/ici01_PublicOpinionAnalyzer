@@ -43,7 +43,7 @@ from typing import Dict, List, Set
 from enums.platform_enum import PlatformEnum
 from enums.placeholder_enum import PlaceholderEnum
 from repositories.prompt_template_repository import PromptTemplateRepository
-from models.prompt_template_model import PromptTemplate
+from models.domain import PromptTemplate
 
 
 ##################################################################

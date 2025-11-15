@@ -10,7 +10,7 @@ from typing import List
 from services.content_fetchers.base_fetcher import ContentFetcher
 from services.content_fetchers.youtube_fetcher import YouTubeFetcher
 from services.content_fetchers.tiktok_fetcher import TikTokFetcher
-from models.content_models import Comment, ContentAnalysis
+from models.domain import Comment, ContentAnalysis
 
 
 ##################################################################
