@@ -12,8 +12,7 @@ All model info uses the LLMModelInfo structure from your shared models.
 
 from abc import ABC, abstractmethod
 from typing import List, Any
-from models.llm_model_info_model import LLMModelInfo
-
+from models.domain import LLMModelInfo
 
 
 ##################################################################

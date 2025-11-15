@@ -10,7 +10,7 @@ from openai import OpenAI
 from langchain_openai import ChatOpenAI
 
 from services.model_providers.base_provider import ModelProvider
-from models.llm_model_info_model import LLMModelInfo
+from models.domain import LLMModelInfo
 from enums.provider_enum import ProviderEnum
 
 OPENAI_LLM_KEYWORDS = ["gpt-", "gpt", "chatgpt", "turbo", "o1-"]
