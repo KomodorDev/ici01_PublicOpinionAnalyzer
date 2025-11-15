@@ -7,7 +7,7 @@ Abstract base class for platform-specific content fetchers.
 """
 
 from abc import ABC, abstractmethod
-from models.content_models import ContentAnalysis
+from models.domain import ContentAnalysis
 
 
 ##################################################################

@@ -20,7 +20,7 @@ from dataclasses import asdict
 
 from enums.platform_enum import PlatformEnum
 from services.content_fetchers.base_fetcher import ContentFetcher
-from models.content_models import ContentAnalysis, Comment, ContentItem
+from models.domain import ContentAnalysis, Comment, ContentItem
 
 
 ##################################################################

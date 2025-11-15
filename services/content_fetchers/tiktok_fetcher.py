@@ -7,7 +7,7 @@ Fetches video metadata and comments from TikTok.
 """
 
 from services.content_fetchers.base_fetcher import ContentFetcher
-from models.content_models import ContentAnalysis
+from models.domain import ContentAnalysis
 
 
 ##################################################################
