@@ -1,3 +1,29 @@
+"""
+content_analysis_manager.py
+===========================
+
+In-memory repository for managing per-content analysis state.
+
+This module defines `ContentAnalysisManager`, a lightweight storage layer
+that keeps track of all `ContentAnalysis` objects currently loaded in the
+application. Each content item (e.g., a YouTube video or TikTok post)
+is uniquely identified by `(platform, content_id)`.
+
+Responsibilities:
+-----------------
+- Store, update, retrieve, and remove `ContentAnalysis` records.
+- Provide a simple CRUD interface with predictable behavior.
+- Maintain comments associated with each piece of content (`append` or `set`).
+- Expose the entire collection (`all()`) for the controller to use.
+
+Notes:
+------
+This is intentionally an **in-memory** data store. It does not persist to
+disk or to a database. The lifecycle is typically tied to a single session
+of the analysis UI, and the controller is expected to clear or rebuild it
+(e.g., when parsing a new set of links).
+"""
+
 from typing import Dict, List, Optional
 from enums.platform_enum import PlatformEnum
 from models.domain.content_analysis_model import ContentAnalysis
