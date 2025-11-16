@@ -9,7 +9,6 @@ High-level service for fetching content from any supported platform.
 from typing import List
 from services.content_fetchers.base_fetcher import ContentFetcher
 from services.content_fetchers.youtube_fetcher import YouTubeFetcher
-from services.content_fetchers.tiktok_fetcher import TikTokFetcher
 from models.domain import Comment, ContentAnalysis
 
 
@@ -26,7 +25,6 @@ class ContentService:
         # Register all available fetchers
         self.fetchers: List[ContentFetcher] = [
             YouTubeFetcher(),
-            TikTokFetcher(),
             # Add more fetchers here as you build them
         ]
 
@@ -73,23 +71,24 @@ class ContentService:
 
 
     # ----------------------------------------------------------------
-    def fetch_comments(self, url: str) -> list[Comment]:
+    def fetch_comments(self, analysis: ContentAnalysis) -> list[Comment]:
         """
-        Fetch comments for content from any supported platform.
+        Fetch comments for the given content and update its progress fields.
 
         Args:
-            url: URL of the content whose comments to fetch.
+            analysis: ContentAnalysis object whose content.url will be used
+                    and whose fetch_* fields will be updated.
 
         Returns:
             List of Comment objects associated with the content.
-
-        Raises:
-            ValueError: If platform is not supported or URL is invalid.
         """
+        url = analysis.url  # convenience property on ContentAnalysis
+
         # Find the appropriate fetcher
         for fetcher in self.fetchers:
             if fetcher.can_handle(url):
-                return fetcher.fetch_comments(url)
+                # Let the fetcher mutate analysis directly
+                return fetcher.fetch_comments(analysis)
 
         # No fetcher found
         raise ValueError(f"Unsupported platform or invalid URL: {url}")

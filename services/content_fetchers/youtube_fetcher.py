@@ -17,8 +17,10 @@ from datetime import datetime, timezone
 from pprint import pprint
 from dataclasses import asdict
 
+from gradio import List
 
-from enums.platform_enum import PlatformEnum
+
+from enums import PlatformEnum, TaskStatusEnum
 from services.content_fetchers.base_fetcher import ContentFetcher
 from models.domain import ContentAnalysis, Comment, ContentItem
 
@@ -37,12 +39,12 @@ class YouTubeFetcher(ContentFetcher):
         """
         Fetch YouTube video metadata and comments using yt-dlp,
         saving them as timestamped JSON files inside Content_Archive.
-        
+
         Args:
             url: YouTube video URL
             progress_callback: Optional callback function(percent, status) for progress updates
         """
-        platform = "youtube"
+        platform = PlatformEnum.YOUTUBE
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
 
         # Base directory for all YouTube content
@@ -56,18 +58,23 @@ class YouTubeFetcher(ContentFetcher):
         # Start with the temp directory as output (we don't yet know channel_id)
         output_template = os.path.join(temp_dir, f"{timestamp}_%(id)s_%(title)s")
 
-
         command = [
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
-            "--cookies-from-browser", "chrome",            # Authenticate via Chrome session
+            "--cookies-from-browser",
+            "chrome",  # Authenticate via Chrome session
             "--write-comments",
-            "--extractor-args", "youtube:comment_sort=top",
-            "--extractor-args", "youtube:max_comments=all,all,all,all",
-            "--sleep-requests", "1",                       # Pause 1s between HTTP requests
-            "--limit-rate", "3M",                          # Max transfer rate
-            "-o", output_template,
+            "--extractor-args",
+            "youtube:comment_sort=top",
+            "--extractor-args",
+            "youtube:max_comments=all,all,all,all",
+            "--sleep-requests",
+            "1",  # Pause 1s between HTTP requests
+            "--limit-rate",
+            "3M",  # Max transfer rate
+            "-o",
+            output_template,
             url,
         ]
 
@@ -80,30 +87,30 @@ class YouTubeFetcher(ContentFetcher):
                 stderr=subprocess.STDOUT,  # Merge stderr into stdout
                 text=True,
                 bufsize=1,  # Line buffered
-                universal_newlines=True
+                universal_newlines=True,
             )
-            
+
             # Read output line by line
             for line in process.stdout:
                 line = line.strip()
-                
+
                 # Print for debugging
                 print(line)
-                
+
                 # Parse progress if callback provided
                 if progress_callback and line:
                     # yt-dlp progress format: [download]  45.2% of 1.23MiB at 500.00KiB/s ETA 00:02
-                    match = re.search(r'\[download\]\s+(\d+\.?\d*)%', line)
+                    match = re.search(r"\[download\]\s+(\d+\.?\d*)%", line)
                     if match:
                         percent = float(match.group(1))
                         progress_callback(percent, line)
-            
+
             # Wait for completion
             return_code = process.wait()
-            
+
             if return_code != 0:
                 raise RuntimeError(f"yt-dlp failed with exit code {return_code}")
-                
+
         except Exception as e:
             raise RuntimeError(f"yt-dlp failed: {e}") from e
 
@@ -118,9 +125,13 @@ class YouTubeFetcher(ContentFetcher):
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        channel_id = data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        channel_id = (
+            data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        )
         channel_name = data.get("channel") or data.get("uploader") or "unknown_name"
-        safe_channel_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in channel_name)
+        safe_channel_name = "".join(
+            c if c.isalnum() or c in " _-" else "_" for c in channel_name
+        )
 
         # Build and create the actual channel directory
         channel_dir = os.path.join(base_dir, f"{safe_channel_name}_{channel_id}")
@@ -134,7 +145,9 @@ class YouTubeFetcher(ContentFetcher):
 
         # Parsing the document into ContentAnalysis model:
         analysis = self._map_to_models(data)
-        print(f"Mapped video '{analysis.content.title}' with {len(analysis.comments)} comments.")
+        print(
+            f"Mapped video '{analysis.content.title}' with {len(analysis.comments)} comments."
+        )
 
         return analysis
 
@@ -152,8 +165,7 @@ class YouTubeFetcher(ContentFetcher):
             ContentAnalysis object with metadata filled and comments list empty.
         """
 
-
-        platform = "youtube"
+        platform = PlatformEnum.YOUTUBE
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
 
         base_dir = os.path.join("Content_Archive", platform)
@@ -167,11 +179,15 @@ class YouTubeFetcher(ContentFetcher):
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
-            "--cookies-from-browser", "chrome",
+            "--cookies-from-browser",
+            "chrome",
             # Not using --write-comments, so no comments fetched
-            "--sleep-requests", "1",
-            "--limit-rate", "3M",
-            "-o", output_template,
+            "--sleep-requests",
+            "1",
+            "--limit-rate",
+            "3M",
+            "-o",
+            output_template,
             url,
         ]
 
@@ -183,14 +199,14 @@ class YouTubeFetcher(ContentFetcher):
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
             )
 
             for line in process.stdout:
                 line = line.strip()
                 print(line)
                 if progress_callback and line:
-                    match = re.search(r'\[download\]\s+(\d+\.?\d*)%', line)
+                    match = re.search(r"\[download\]\s+(\d+\.?\d*)%", line)
                     if match:
                         percent = float(match.group(1))
                         progress_callback(percent, line)
@@ -210,9 +226,13 @@ class YouTubeFetcher(ContentFetcher):
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        channel_id = data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        channel_id = (
+            data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        )
         channel_name = data.get("channel") or data.get("uploader") or "unknown_name"
-        safe_channel_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in channel_name)
+        safe_channel_name = "".join(
+            c if c.isalnum() or c in " _-" else "_" for c in channel_name
+        )
         channel_dir = os.path.join(base_dir, f"{safe_channel_name}_{channel_id}")
         os.makedirs(channel_dir, exist_ok=True)
         final_json_path = os.path.join(channel_dir, os.path.basename(json_path))
@@ -222,26 +242,29 @@ class YouTubeFetcher(ContentFetcher):
         # Parse metadata to ContentAnalysis, but force comments to empty list
         analysis = self._map_to_models(data)
         analysis.comments = []
-        print(f"Mapped video '{analysis.content.title}'. Comments intentionally left empty.")
+        print(
+            f"Mapped video '{analysis.content.title}'. Comments intentionally left empty."
+        )
 
         return analysis
 
     # ----------------------------------------------------------------
-    def fetch_comments(self, url: str, progress_callback=None) -> list:
+    def fetch_comments(self, analysis: ContentAnalysis) -> List[Comment]:
         """
         Fetch YouTube video comments using yt-dlp, saving and parsing the info JSON.
-        Returns a list of Comment objects
-        (Metadata is parsed but ignored for output).
+        Updates the given ContentAnalysis with fetch progress/status and comments.
 
         Args:
-            url: YouTube video URL
-            progress_callback: Optional callback(percent, status) for progress updates
+            analysis: ContentAnalysis whose content.url will be used as the target
+                    and whose fetch_* fields will be updated.
 
         Returns:
-            List of Comment objects for the video.
+            List of Comment objects (also stored in analysis.comments).
         """
 
-        platform = "youtube"
+        url = analysis.url  # convenience property on ContentAnalysis
+
+        platform = PlatformEnum.YOUTUBE
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
 
         # Directory structure
@@ -251,19 +274,39 @@ class YouTubeFetcher(ContentFetcher):
         os.makedirs(temp_dir, exist_ok=True)
         output_template = os.path.join(temp_dir, f"{timestamp}_%(id)s_%(title)s")
 
+        # If you *want* yt-dlp to try to limit comments:
+        #   - if limit is None => use "all"
+        #   - if limit is set  => use that number
+        if analysis.limit is not None:
+            max_comments_arg = f"youtube:max_comments={analysis.limit},all,all,all"
+        else:
+            max_comments_arg = "youtube:max_comments=all,all,all,all"
+
         command = [
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
-            "--cookies-from-browser", "chrome",
+            "--cookies-from-browser",
+            "chrome",
             "--write-comments",
-            "--extractor-args", "youtube:comment_sort=top",
-            "--extractor-args", "youtube:max_comments=all,all,all,all",
-            "--sleep-requests", "1",
-            "--limit-rate", "3M",
-            "-o", output_template,
+            "--extractor-args",
+            "youtube:comment_sort=top",
+            "--extractor-args",
+            max_comments_arg,
+            "--sleep-requests",
+            "1",
+            "--limit-rate",
+            "3M",
+            "-o",
+            output_template,
             url,
         ]
+
+        # Initialize fetch progress on the analysis object
+        analysis.fetch_status = TaskStatusEnum.RUNNING
+        analysis.fetch_progress = 0.0
+        analysis.fetch_error = None
+        analysis.fetch_status_text = f"Starting yt-dlp for {url} …"
 
         print(f"Running yt-dlp (comments only) for {url} ...")
         try:
@@ -273,21 +316,45 @@ class YouTubeFetcher(ContentFetcher):
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
             )
+
+            # Read stdout line by line and update status
             for line in process.stdout:
                 line = line.strip()
+                if not line:
+                    continue
+
                 print(line)
-                if progress_callback and line:
-                    match = re.search(r'\[download\]\s+(\d+\.?\d*)%', line)
-                    if match:
-                        percent = float(match.group(1))
-                        progress_callback(percent, line)
+                # Store last line as status text
+                analysis.fetch_status_text = line
+
+                # Try to parse a percentage if yt-dlp prints one
+                match = re.search(r"\[download\]\s+(\d+\.?\d*)%", line)
+                if match:
+                    percent = float(match.group(1))
+                    # Convert 0–100 → 0.0–1.0 and clamp
+                    analysis.fetch_progress = max(0.0, min(1.0, percent / 100.0))
+                else:
+                    # Optional: gently bump progress so it doesn't stay at 0%
+                    if analysis.fetch_progress < 0.9:
+                        analysis.fetch_progress += 0.01
+
             return_code = process.wait()
             if return_code != 0:
                 raise RuntimeError(f"yt-dlp failed with exit code {return_code}")
+
         except Exception as e:
+            # Mark error state on ContentAnalysis and re-raise
+            analysis.fetch_status = TaskStatusEnum.ERROR
+            analysis.fetch_error = str(e)
+            analysis.fetch_status_text = f"yt-dlp failed: {e}"
+            analysis.fetch_progress = 0.0
             raise RuntimeError(f"yt-dlp failed: {e}") from e
+
+        # At this point yt-dlp succeeded, mark as done (we'll still parse the JSON)
+        analysis.fetch_status = TaskStatusEnum.RUNNING  # still running while we parse
+        analysis.fetch_status_text = "Parsing info JSON…"
 
         # Find the .info.json file
         json_files = [f for f in os.listdir(temp_dir) if f.endswith(".info.json")]
@@ -298,74 +365,38 @@ class YouTubeFetcher(ContentFetcher):
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        channel_id = data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        channel_id = (
+            data.get("channel_id") or data.get("uploader_id") or "unknown_channel"
+        )
         channel_name = data.get("channel") or data.get("uploader") or "unknown_name"
-        safe_channel_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in channel_name)
+        safe_channel_name = "".join(
+            c if c.isalnum() or c in " _-" else "_" for c in channel_name
+        )
         channel_dir = os.path.join(base_dir, f"{safe_channel_name}_{channel_id}")
         os.makedirs(channel_dir, exist_ok=True)
         final_json_path = os.path.join(channel_dir, os.path.basename(json_path))
         shutil.move(json_path, final_json_path)
         print(f"Saved info JSON to {final_json_path}")
 
-        # Only return the mapped comments (not ContentAnalysis!)
+        # Map to Comment objects
         comments = self._map_to_comments(data)
-        print(f"Fetched {len(comments)} comments for video '{data.get('title', 'Unknown')}'.")
-        return comments
 
+        # Apply ContentAnalysis.limit on top (for safety & determinism)
+        if analysis.limit is not None:
+            comments = comments[: analysis.limit]
 
-    # ----------------------------------------------------------------
-    def _map_to_models_OLD(self, data: dict) -> ContentAnalysis:
-        """Convert yt-dlp JSON into our internal ContentAnalysis model."""
+        # Store on the ContentAnalysis
+        analysis.comments = comments
 
-        # Convert upload_date ("YYYYMMDD") to ISO 8601 (e.g., "2025-10-26T00:00:00Z")
-        published_at = None
-        if upload_date := data.get("upload_date"):
-            try:
-                published_at = datetime.strptime(upload_date, "%Y%m%d").date().isoformat()
-            except ValueError:
-                published_at = None
-
-        # Youtube Video as ContentItem
-        content = ContentItem(
-            content_id=data.get("id", ""),
-            platform=PlatformEnum.YOUTUBE,
-            url=data.get("webpage_url", ""),
-            title=data.get("title", "Untitled"),
-            author=data.get("uploader") or data.get("channel", "Unknown"),
-            description=data.get("description"),
-            published_at=published_at,
-            view_count=data.get("view_count"),
-            like_count=data.get("like_count"),
-            comment_count=data.get("comment_count"),
+        # Final status
+        analysis.fetch_status = TaskStatusEnum.DONE
+        analysis.fetch_progress = 1.0
+        analysis.fetch_status_text = (
+            f"Fetched {len(comments)} comments for video '{data.get('title', 'Unknown')}'."
         )
 
-        # Comments
-        comments = []
-        for c in data.get("comments", []):
-            # Convert timestamp to ISO 8601
-            published_iso = None
-            if ts := c.get("timestamp"):
-                published_iso = (
-                    datetime.fromtimestamp(ts, tz=timezone.utc)
-                    .isoformat()
-                    .replace("+00:00", "Z")
-)
-
-            comments.append(
-                Comment(
-                    comment_id=c.get("id", ""),
-                    content_id=data.get("id", ""),
-                    author=c.get("author", "Unknown"),
-                    text=c.get("text", ""),
-                    published_at=published_iso or "",
-                    like_count=c.get("like_count", 0),
-                    reply_count=0,
-                    parent_comment_id=None if c.get("parent") == "root" else c.get("parent"),
-                )
-            )
-
-        # Return
-        return ContentAnalysis(content=content, comments=comments)
+        print(analysis.fetch_status_text)
+        return comments
 
     # ----------------------------------------------------------------
     def _map_to_content(self, data: dict) -> ContentItem:
@@ -373,7 +404,9 @@ class YouTubeFetcher(ContentFetcher):
         published_at = None
         if upload_date := data.get("upload_date"):
             try:
-                published_at = datetime.strptime(upload_date, "%Y%m%d").date().isoformat()
+                published_at = (
+                    datetime.strptime(upload_date, "%Y%m%d").date().isoformat()
+                )
             except ValueError:
                 published_at = None
 
@@ -422,7 +455,9 @@ class YouTubeFetcher(ContentFetcher):
                     published_at=published_iso or "",
                     like_count=c.get("like_count", 0),
                     reply_count=0,
-                    parent_comment_id=None if c.get("parent") == "root" else c.get("parent"),
+                    parent_comment_id=(
+                        None if c.get("parent") == "root" else c.get("parent")
+                    ),
                 )
             )
         return comments
@@ -444,7 +479,9 @@ class YouTubeFetcher(ContentFetcher):
 
     # ----------------------------------------------------------------
 
+
 ##################################################################
+
 
 def main():
     """Main"""
@@ -460,7 +497,7 @@ def main():
     # Progress handler that prints updates
     def progress_handler(percent, status_line):
         # Print progress with carriage return to overwrite same line
-        print(f"\rProgress: {percent:5.1f}% - {status_line}", end='', flush=True)
+        print(f"\rProgress: {percent:5.1f}% - {status_line}", end="", flush=True)
 
     # --- OLD: Fetches both metadata and comments together
     try:
@@ -481,7 +518,7 @@ def main():
         print("--")
 
     print(f"\nTotal comments fetched: {len(result.comments)}")
-    
+
     # --- NEW
     # Fetch only metadata
     meta_result = fetcher.fetch_metadata(url)
