@@ -7,7 +7,7 @@ from typing import Optional, List
 from enums.platform_enum import PlatformEnum
 from enums.sort_by_enum import SortByEnum
 from enums.sort_dir_enum import SortDirEnum
-from models.view_models.analysis import VideoModelInfoViewModel
+from .video_model_info_view_model import VideoModelInfoViewModel
 
 
 @dataclass

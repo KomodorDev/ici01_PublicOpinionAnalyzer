@@ -14,7 +14,12 @@ from typing import Any, List, Optional
 
 from enums import SortDirEnum, SortByEnum, TaskStatusEnum
 
-from models.domain import ContentItem, Comment, ClassificationGroup, PromptTemplate, ModelRunProgress
+from models.domain.content_item_model import ContentItem
+from models.domain.comment_model import Comment
+from models.domain.classification_models_OLD import ClassificationGroup
+from models.domain.prompt_template_model import PromptTemplate
+from models.domain.model_run_progress_model import ModelRunProgress
+
 
 
 @dataclass
