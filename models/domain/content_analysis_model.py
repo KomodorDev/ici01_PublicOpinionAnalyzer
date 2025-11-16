@@ -11,12 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
-from enums.sort_by_enum import SortByEnum
-from enums.sort_dir_enum import SortDirEnum
-from models.domain.content_item_model import ContentItem
-from models.domain.comment_model import Comment
-from models.domain.classification_models_OLD import ClassificationGroup
-from models.domain.prompt_template_model import PromptTemplate
+
+from enums import SortDirEnum, SortByEnum, TaskStatusEnum
+
+from models.domain import ContentItem, Comment, ClassificationGroup, PromptTemplate, ModelRunProgress
 
 
 @dataclass
@@ -70,3 +68,22 @@ class ContentAnalysis:
     def url(self) -> str:
         """Convenience: direct access to the canonical URL."""
         return self.content.url
+
+    # --------------------------------------------------
+    # Progress: step 1 – fetching comments (yt-dlp)
+    # --------------------------------------------------
+    fetch_status: TaskStatusEnum = TaskStatusEnum.PENDING
+    fetch_progress: float = 0.0     # 0.0–1.0
+    fetch_error: Optional[str] = None
+    fetch_status_text: str = ""                             # last line from yt-dlp / human status
+
+    # --------------------------------------------------
+    # Progress: step 2 – analyzing comments (per model)
+    # --------------------------------------------------
+    # One ModelRunProgress per (provider, model_name) on this content
+    model_run_progress: List[ModelRunProgress] = field(default_factory=list)
+
+    # --------------------------------------------------
+    # Progress: step 3 – exporting results
+    # --------------------------------------------------
+    export_status: TaskStatusEnum = TaskStatusEnum.PENDING
