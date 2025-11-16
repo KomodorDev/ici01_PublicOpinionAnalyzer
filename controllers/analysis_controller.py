@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from models.domain.model_run_progress_model import ModelRunProgress
 from services import (
     ContentService,
     PromptTemplateService,
@@ -9,7 +10,9 @@ from services import (
     ContentAnalysisManager,
 )
 
-from enums import SortByEnum, SortDirEnum, PlatformEnum
+from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
+
+from mappers import AnalysisMapper
 
 from models.domain import LLMModelInfo, ContentAnalysis, VideoModelInfo
 from models.view_models.analysis import (
@@ -37,6 +40,7 @@ def __init__(
     classification_service: Optional[ClassificationService] = None,
     video_analysis_service: Optional[VideoAnalysisService] = None,
     model_service: Optional[ModelService] = None,
+    analysis_mapper: Optional[AnalysisMapper] = None
 ):
     # Core dependencies
     self.content_service = content_service or ContentService()
@@ -54,6 +58,9 @@ def __init__(
 
     self.model_service = model_service or ModelService()
 
+    # Mapping helpers
+    self.analysis_mapper = analysis_mapper or AnalysisMapper()
+
     self.analysis_view = AnalysisView(self)
 
     # ================================================================
@@ -67,7 +74,7 @@ def __init__(
         # 5) Build available LLM model viewmodels for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self._llm_model_info_to_llm_model_info_view_model(m) for m in llm_models
+            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m) for m in llm_models
         ]
 
         vm =AnalysisViewModel(
@@ -112,7 +119,7 @@ def __init__(
 
         # 5) Build left-side list view models
         contents_vm: Optional[List[ContentItemListViewModel]] = (
-            [self._content_analysis_to_content_list_view_model(ca) for ca in analyses]
+            [self.analysis_mapper.content_analysis_to_content_list_view_model(ca) for ca in analyses]
             if analyses
             else None
         )
@@ -127,7 +134,7 @@ def __init__(
         # 7) Build available LLM model viewmodels for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self._llm_model_info_to_llm_info_view_model(m) for m in llm_models
+            self.analysis_mapper.llm_model_info_to_llm_info_view_model(m) for m in llm_models
         ]
 
         # 8) Prepare messages (inline, no extra helper)
@@ -224,7 +231,7 @@ def __init__(
 
         # 4) Left-side list view models
         contents_vm: Optional[List[ContentItemListViewModel]] = (
-            [self._content_analysis_to_content_list_view_model(ca) for ca in analyses]
+            [self.analysis_mapper.content_analysis_to_content_list_view_model(ca) for ca in analyses]
             if analyses
             else None
         )
@@ -239,7 +246,7 @@ def __init__(
         # 6) Available LLM models for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self._llm_model_info_to_llm_info_view_model(m) for m in llm_models
+            self.analysis_mapper.lm_model_info_to_llm_info_view_model(m) for m in llm_models
         ]
 
         # 7) Return full updated page state; analysis_runs cleared
@@ -465,7 +472,6 @@ def __init__(
         """
 
         # 1) Resolve LLM clients for all selected models
-        #    (Adjust this to your actual ModelService API)
         llm_clients = []
         for provider, model_name in selected_models:
             client = self.model_service.get_llm_client(
@@ -474,15 +480,32 @@ def __init__(
             )
             llm_clients.append(client)
 
-        # 2) Attach the list of clients to every ContentAnalysis
+        # 2) For every content item, attach clients and create ModelRunProgress entries
         analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
+
         for ca in analyses:
-            ca.models = llm_clients[:]  # shallow copy so later changes don't alias
+            # Attach the list of LLM clients (copy so they don't alias)
+            ca.models = llm_clients[:]
 
-        # 3) (Later) you will trigger the actual analysis run somewhere else,
-        #    using ca.models on each ContentAnalysis.
+            # How many comments this content will be analyzed with
+            total = len(ca.comments)
 
-        # Call the analysis service with the fully prepared ContentAnalysis objects
+            # Fresh per-model progress list for THIS content item
+            ca.model_run_progress = []
+            for provider, model_name in selected_models:
+                ca.model_run_progress.append(
+                    ModelRunProgress(
+                        provider=provider,
+                        model_name=model_name,
+                        status=TaskStatusEnum.PENDING,
+                        progress=0.0 if total > 0 else 1.0,
+                        current_comment=0,
+                        total_comments=total,
+                    )
+                )
+
+
+        # 3) Call the analysis service with the fully prepared ContentAnalysis objects
         self.analysis_service.run_analysis(analyses)
 
     # ---------------------------------------------------------
@@ -525,38 +548,6 @@ def __init__(
 
         return result
 
-    # ================================================================
-    # Mapping helpers
-    # ================================================================
-    # ---------------------------------------------------------
-    def _content_analysis_to_content_list_view_model(
-        ca: ContentAnalysis,
-    ) -> ContentItemListViewModel:
-        """
-        Map a ContentAnalysis domain object to the left-list view model.
-        """
-        content = ca.content
-
-        # Decide which comment_count to show:
-        # - Prefer the platform's total comment_count, if present
-        # - Otherwise, if we've already loaded comments into this ContentAnalysis,
-        #   show the number of loaded comments as a fallback.
-        if content.comment_count is not None:
-            comment_count = content.comment_count
-        elif ca.comments:
-            comment_count = len(ca.comments)
-        else:
-            comment_count = None
-
-        return ContentItemListViewModel(
-            platform=content.platform,
-            content_id=content.content_id,
-            url=content.url,
-            title=content.title,
-            author=content.author,
-            comment_count=comment_count,
-        )
-
     # ---------------------------------------------------------
     def _build_content_detail_view_model(
         self, ca: ContentAnalysis
@@ -578,114 +569,15 @@ def __init__(
         # that you then map to LLMModelInfoViewModel.
         summary_model_infos = self.video_analysis_service.list_video_models()
         available_summary_models = [
-            self._llm_model_info_to_llm_model_info_view_model(m)
+            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
             for m in summary_model_infos
         ]
 
-        return self._content_analysis_to_content_detail_view_model(
+        return self.analysis_mapper.content_analysis_to_content_detail_view_model(
             ca,
             available_prompt_templates=available_prompt_templates,
             available_classification_groups=available_classification_groups,
             available_summary_models=available_summary_models,
-        )
-
-    # ---------------------------------------------------------
-    def _content_analysis_to_content_detail_view_model(
-        ca: ContentAnalysis,
-        *,
-        available_prompt_templates: list[str],
-        available_classification_groups: list[str],
-        available_summary_models: list[LLMModelInfoViewModel],
-    ) -> ContentItemDetailViewModel:
-        """
-        Map a ContentAnalysis + ContentItem domain object into the detail view model.
-        """
-
-        content = ca.content
-
-        # -----------------------------
-        # Summary defaults
-        # -----------------------------
-        summary_text = content.summary or ""
-        summary_status = "idle"  # Hard-coded until you actually wire summary generation
-        summary_source = content.summary_source  # "manual" | "ai" | None
-
-        # -----------------------------
-        # Selected template/group names
-        # -----------------------------
-        selected_template_name = ca.prompt_template.name if ca.prompt_template else None
-        selected_group_name = (
-            ca.classification_group.name if ca.classification_group else None
-        )
-
-        # -----------------------------
-        # Comment count decision
-        # -----------------------------
-        if content.comment_count is not None:
-            comment_count = content.comment_count
-        elif ca.comments:
-            comment_count = len(ca.comments)
-        else:
-            comment_count = None
-
-        # -----------------------------
-        # Build the viewmodel
-        # -----------------------------
-        return ContentItemDetailViewModel(
-            # Identity
-            platform=content.platform,
-            content_id=content.content_id,
-            url=content.url,
-            # Metadata
-            title=content.title,
-            author=content.author,
-            description=content.description,
-            view_count=content.view_count,
-            like_count=content.like_count,
-            comment_count=comment_count,
-            # Summary
-            summary_text=summary_text,
-            summary_status=summary_status,
-            summary_source=summary_source,
-            # Analysis config
-            sort_by=ca.sort_by,
-            sort_dir=ca.sort_dir,
-            limit=ca.limit,
-            selected_prompt_template_name=selected_template_name,
-            selected_classification_group_name=selected_group_name,
-            # Dropdown choice data
-            available_prompt_templates=available_prompt_templates,
-            available_classification_groups=available_classification_groups,
-            available_sort_by_options=list(SortByEnum),
-            available_sort_dir_options=list(SortDirEnum),
-            available_summary_models=available_summary_models,
-        )
-
-    # ---------------------------------------------------------
-    def _video_model_info_to_video_model_info_view_model(
-        m: VideoModelInfo,
-    ) -> VideoModelInfoViewModel:
-        return VideoModelInfoViewModel(
-            provider=m.provider,
-            model_name=m.name,
-            label=m.display_name or m.name,
-            is_favorite=m.favorite,
-            is_local=m.is_local,
-        )
-
-    # ---------------------------------------------------------
-    def _llm_model_info_to_llm_model_info_view_model(
-        model: LLMModelInfo,
-    ) -> LLMModelInfoViewModel:
-        """
-        Convert a domain LLMModelInfo into a UI-friendly LLMModelInfoViewModel.
-        """
-        return LLMModelInfoViewModel(
-            provider=model.provider,
-            model_name=model.name,
-            label=model.display_name or model.name,
-            is_favorite=model.favorite,
-            is_local=model.is_local,
         )
 
     # ---------------------------------------------------------
