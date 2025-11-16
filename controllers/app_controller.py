@@ -1,9 +1,10 @@
 # controllers/app_controller.py
 import gradio as gr
-from controllers.general_controller import GeneralController
+from controllers.analysis_controller import AnalysisController
 from controllers.classification_controller import ClassificationController
 from controllers.settings_controller import SettingsController
 from controllers.prompt_template_controller import PromptTemplateController
+
 # Future controllers can be implemented later:
 # from controllers.prompt_controller import PromptController
 # from controllers.advanced_controller import AdvancedController
@@ -27,15 +28,12 @@ class AppController:
         Each controller encapsulates its own logic and view layer, ensuring a clean separation
         across modules according to the MVC (Model–View–Controller) pattern.
         """
-        self.general_controller = GeneralController()
+        self.analysis_controller = AnalysisController()
         self.classification_controller = ClassificationController()
         self.settings_controller = SettingsController()
         self.prompt_template_controller = PromptTemplateController()
 
         # Placeholder: initialize other controllers when they are implemented
-
-        # self.prompt_controller = PromptController()
-        # self.advanced_controller = AdvancedController()
 
     # ----------------------------------------------------------------
     def launch(self) -> None:
@@ -49,9 +47,9 @@ class AppController:
         with gr.Blocks(title="AI Public Opinion Analyzer") as demo:
             rerender_tick = gr.State(0)  # 1) dummy state to force re-rendering views
 
-            # General tab -------------------------------------------------------------------
-            with gr.Tab("General"):
-                self.general_controller.render_general_view()
+            # Analysis tab -------------------------------------------------------------------
+            with gr.Tab("Analysis"):
+                self.analysis_controller.render_analysis_view()
 
             # Classification Manager tab --------------------------------------------------------------
             with gr.Tab("Classification Manager"):
@@ -61,8 +59,8 @@ class AppController:
             with gr.Tab("Prompt Manager"):
                 self.prompt_template_controller.render_prompt_template_view()
 
-            # Advanced Settings tab ----------------------------------------------------------
-            with gr.Tab("Advanced Settings") as adv_tab:
+            # Settings tab ----------------------------------------------------------
+            with gr.Tab("Settings") as adv_tab:
                 # 3) re-render when `rerender_tick` changes
                 @gr.render(inputs=[rerender_tick])
                 def _(_tick):
@@ -80,5 +78,6 @@ class AppController:
         demo.launch()
 
     # ----------------------------------------------------------------
+
 
 ##################################################################
