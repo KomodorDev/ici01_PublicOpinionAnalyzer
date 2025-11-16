@@ -1,6 +1,6 @@
+import threading
 from typing import List, Optional, Tuple
 
-from models.domain.model_run_progress_model import ModelRunProgress
 from services import (
     ContentService,
     PromptTemplateService,
@@ -8,19 +8,20 @@ from services import (
     VideoAnalysisService,
     ModelService,
     ContentAnalysisManager,
+    AnalysisService
 )
 
 from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
 
 from mappers import AnalysisMapper
 
-from models.domain import LLMModelInfo, ContentAnalysis, VideoModelInfo
+from models.domain import LLMModelInfo, ContentAnalysis, ModelRunProgress
 from models.view_models.analysis import (
     AnalysisViewModel,
     LLMModelInfoViewModel,
     ContentItemDetailViewModel,
     ContentItemListViewModel,
-    VideoModelInfoViewModel,
+    ContentAnalysisRunViewModel,
 )
 
 from views import AnalysisView
@@ -31,53 +32,63 @@ class AnalysisController:
     All per-content operations identify a ContentAnalysis by (platform, content_id).
     """
 
-# ---------------------------------------------------------
-def __init__(
-    self,
-    content_service: Optional[ContentService] = None,
-    content_analysis_manager: Optional[ContentAnalysisManager] = None,
-    prompt_template_service: Optional[PromptTemplateService] = None,
-    classification_service: Optional[ClassificationService] = None,
-    video_analysis_service: Optional[VideoAnalysisService] = None,
-    model_service: Optional[ModelService] = None,
-    analysis_mapper: Optional[AnalysisMapper] = None
-):
-    # Core dependencies
-    self.content_service = content_service or ContentService()
+    # ---------------------------------------------------------
+    def __init__(
+        self,
+        content_service: Optional[ContentService] = None,
+        content_analysis_manager: Optional[ContentAnalysisManager] = None,
+        prompt_template_service: Optional[PromptTemplateService] = None,
+        classification_service: Optional[ClassificationService] = None,
+        video_analysis_service: Optional[VideoAnalysisService] = None,
+        model_service: Optional[ModelService] = None,
+        analysis_service: Optional[AnalysisService] = None,
+        analysis_mapper: Optional[AnalysisMapper] = None,
+    ):
+        # Core dependencies
+        self.content_service = content_service or ContentService()
 
-    self.content_analysis_manager = content_analysis_manager or ContentAnalysisManager()
+        self.content_analysis_manager = (
+            content_analysis_manager or ContentAnalysisManager()
+        )
 
-    # Prompt templates (dropdowns, etc.)
-    self.prompt_template_service = prompt_template_service or PromptTemplateService()
+        # Prompt templates (dropdowns, etc.)
+        self.prompt_template_service = (
+            prompt_template_service or PromptTemplateService()
+        )
 
-    # Classification groups (dropdowns, etc.)
-    self.classification_service = classification_service or ClassificationService()
+        # Classification groups (dropdowns, etc.)
+        self.classification_service = classification_service or ClassificationService()
 
-    # Video-capable model registry / analysis support
-    self.video_analysis_service = video_analysis_service or VideoAnalysisService()
+        # Video-capable model registry / analysis support
+        self.video_analysis_service = video_analysis_service or VideoAnalysisService()
 
-    self.model_service = model_service or ModelService()
+        self.model_service = model_service or ModelService()
 
-    # Mapping helpers
-    self.analysis_mapper = analysis_mapper or AnalysisMapper()
+        self.analysis_service = analysis_service or AnalysisService()
 
-    self.analysis_view = AnalysisView(self)
+        # Mapping helpers
+        self.analysis_mapper = analysis_mapper or AnalysisMapper()
+
+        self.analysis_view = AnalysisView(self)
+
+        self._analysis_thread = None
 
     # ================================================================
     # Initial / full view render
     # ================================================================
-    def render_analysis_view(self) -> AnalysisViewModel:
+    def render_analysis_view(self):
         """
-        Build initial nalysisViewModel for the current controller state.
+        Build initial analysisViewModel for the current controller state.
         """
 
         # 5) Build available LLM model viewmodels for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m) for m in llm_models
+            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
+            for m in llm_models
         ]
 
-        vm =AnalysisViewModel(
+        vm = AnalysisViewModel(
             contents=None,
             selected=None,
             available_llm_models=available_llm_models,
@@ -85,8 +96,7 @@ def __init__(
             info_message=None,
             error_message=None,
         )
-        self.analysis_view.render_analysis_view(controller=self, view_model=vm)
-
+        self.analysis_view.render_analysis_view(view_model=vm)
 
     # ================================================================
     # Callbacks wired by the view
@@ -119,7 +129,10 @@ def __init__(
 
         # 5) Build left-side list view models
         contents_vm: Optional[List[ContentItemListViewModel]] = (
-            [self.analysis_mapper.content_analysis_to_content_list_view_model(ca) for ca in analyses]
+            [
+                self.analysis_mapper.content_analysis_to_content_list_view_model(ca)
+                for ca in analyses
+            ]
             if analyses
             else None
         )
@@ -134,7 +147,8 @@ def __init__(
         # 7) Build available LLM model viewmodels for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self.analysis_mapper.llm_model_info_to_llm_info_view_model(m) for m in llm_models
+            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
+            for m in llm_models
         ]
 
         # 8) Prepare messages (inline, no extra helper)
@@ -231,7 +245,10 @@ def __init__(
 
         # 4) Left-side list view models
         contents_vm: Optional[List[ContentItemListViewModel]] = (
-            [self.analysis_mapper.content_analysis_to_content_list_view_model(ca) for ca in analyses]
+            [
+                self.analysis_mapper.content_analysis_to_content_list_view_model(ca)
+                for ca in analyses
+            ]
             if analyses
             else None
         )
@@ -246,7 +263,8 @@ def __init__(
         # 6) Available LLM models for dropdown
         llm_models: List[LLMModelInfo] = self.model_service.list_all_llm_models()
         available_llm_models: List[LLMModelInfoViewModel] = [
-            self.analysis_mapper.lm_model_info_to_llm_info_view_model(m) for m in llm_models
+            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
+            for m in llm_models
         ]
 
         # 7) Return full updated page state; analysis_runs cleared
@@ -482,6 +500,9 @@ def __init__(
 
         # 2) For every content item, attach clients and create ModelRunProgress entries
         analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
+        if not analyses:
+            return
+
 
         for ca in analyses:
             # Attach the list of LLM clients (copy so they don't alias)
@@ -504,24 +525,85 @@ def __init__(
                     )
                 )
 
+        # Optional safety: don't start a second run while one is still running
+        if self._analysis_thread is not None and self._analysis_thread.is_alive():
+            return
 
-        # 3) Call the analysis service with the fully prepared ContentAnalysis objects
-        self.analysis_service.run_analysis(analyses)
+        # 3) Start background thread so we don't block the UI
+        thread = threading.Thread(
+            target=self._run_analysis_background,
+            args=(analyses,),
+            daemon=True,
+        )
+        self._analysis_thread = thread
+        thread.start()
+
+    # ---------------------------------------------------------
+    def _run_analysis_background(self, analyses: List[ContentAnalysis]) -> None:
+        """
+        Background worker: run the analysis and update per-model status on error.
+        """
+        try:
+            self.analysis_service.run_analysis(analyses)
+        except Exception as exc:
+            # If the whole run crashes, mark all model runs as ERROR so UI can show something useful.
+            msg = f"Analysis failed: {exc!r}"
+            for ca in analyses:
+                for mr in ca.model_run_progress:
+                    mr.status = TaskStatusEnum.ERROR
+                    mr.error = msg
+
+        finally:
+            # Allow new runs later
+            self._analysis_thread = None
 
     # ---------------------------------------------------------
     def on_analysis_status_polled(self) -> AnalysisViewModel:
         """
         Called periodically by the view (e.g. via a Gradio Timer).
-        1) Ask backend for latest progress.
-        2) Update internal run state (ContentAnalysisRunViewModel list).
-        3) Return updated AnalysisViewModel (especially .analysis_runs).
+
+        1) Read latest progress from ContentAnalysis objects.
+        2) Map to ContentAnalysisRunViewModel list.
+        3) Return an AnalysisViewModel that has `analysis_runs` populated.
+        Other fields can be None so the UI only refreshes the progress panel.
         """
+        analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
+        if not analyses:
+            # Nothing to report; just return an "empty" diff
+            return AnalysisViewModel(
+                contents=None,
+                selected=None,
+                available_llm_models=None,
+                analysis_runs=None,
+                info_message=None,
+                error_message=None,
+            )
+
+        # Map each ContentAnalysis → ContentAnalysisRunViewModel
+        analysis_runs: List[ContentAnalysisRunViewModel] = [
+            self.analysis_mapper.content_analysis_to_content_analysis_run_view_model(ca)
+            for ca in analyses
+        ]
+
+        # Optionally, if you want to hide the panel when no runs exist:
+        analysis_runs_or_none: Optional[List[ContentAnalysisRunViewModel]] = (
+            analysis_runs if analysis_runs else None
+        )
+
+        return AnalysisViewModel(
+            contents=None,  # do not touch the left list
+            selected=None,  # do not change selection
+            available_llm_models=None,  # leave dropdown unchanged
+            analysis_runs=analysis_runs_or_none,
+            info_message=None,
+            error_message=None,
+        )
 
     # ================================================================
     # Helpers
     # ================================================================
     # ---------------------------------------------------------
-    def _extract_urls(raw_text: str) -> list[str]:
+    def _extract_urls(self, raw_text: str) -> list[str]:
         """
         Turn the pasted text into a cleaned, de-duplicated list of URLs.
 
@@ -559,15 +641,15 @@ def __init__(
 
         # Adjust these service calls to your real APIs.
         available_prompt_templates = (
-            self.prompt_template_service.list_all_template_names()
+            self.prompt_template_service.list_all_prompt_template_names(ContentAnalysis.platform)
         )
         available_classification_groups = (
-            self.classification_service.list_all_group_names()
+            self.classification_service.list_classification_group_names()
         )
 
         # Suppose your registry returns domain model info objects
         # that you then map to LLMModelInfoViewModel.
-        summary_model_infos = self.video_analysis_service.list_video_models()
+        summary_model_infos = self.video_analysis_service.list_available_video_models()
         available_summary_models = [
             self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
             for m in summary_model_infos
