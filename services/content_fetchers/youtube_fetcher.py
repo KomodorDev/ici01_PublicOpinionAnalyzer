@@ -5,7 +5,7 @@ youtube_fetcher.py
 
 Fetches video metadata and comments from YouTube.
 """
-
+from __future__ import annotations
 
 import os
 import sys
