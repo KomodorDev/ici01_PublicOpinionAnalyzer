@@ -1,20 +1,17 @@
 from __future__ import annotations
+from typing import Optional
 from dataclasses import dataclass
 from enums.provider_enum import ProviderEnum
-from enums.model_run_status_enum import ModelRunStatusEnum
+from enums.task_status_enum import TaskStatusEnum
 
 
-@dataclass
 class ModelRunProgressViewModel:
-    """
-    Progress info for a single (provider, model) on one content item.
-    """
-
     provider: ProviderEnum
-    model_name: str      # internal name, e.g. "gpt-4o-mini"
-    label: str           # UI label: e.g. "OpenAI — GPT-4o-mini"
+    model_name: str
+    label: str # e.g., "OpenAI - GPT-4", "Antrhopic - Claude 2"
 
-    processed_comments: int
+    status: TaskStatusEnum        # PENDING | RUNNING | DONE | ERROR
+    progress: float               # 0.0–1.0
+    current_comment: int
     total_comments: int
-
-    status: ModelRunStatusEnum  # PENDING/RUNNING/DONE/ERROR
+    error: Optional[str] = None

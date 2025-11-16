@@ -1,17 +1,18 @@
-# models/view_models/analysis/content_analysis_run_view_model.py
-
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
-from enums.platform_enum import PlatformEnum
+from enums import PlatformEnum, TaskStatusEnum
 from models.view_models.analysis.model_run_progress_view_model import ModelRunProgressViewModel
 
 
 @dataclass
 class ContentAnalysisRunViewModel:
     """
-    Represents one 'status box' for a single content item during analysis.
+    One 'status box' for a single content item during analysis.
+
+    This is a pure projection of ContentAnalysis + per-model run state,
+    used only for the run/progress panel.
     """
 
     # Identity / display
@@ -19,12 +20,21 @@ class ContentAnalysisRunViewModel:
     content_id: str
     url: str
     title: str
+    author: str
 
-    # Fetch status text EXACTLY as returned by the backend (string only)
-    fetch_status: str
+    # -----------------------------
+    # Step 1: Fetching comments
+    # -----------------------------
+    fetch_status: TaskStatusEnum              # PENDING | RUNNING | DONE | ERROR
+    fetch_progress: float                     # 0.0–1.0
+    fetch_status_text: str                    # last status line (yt-dlp, etc.)
 
-    # Total number of comments for this content
-    total_comments: int
+    # -----------------------------
+    # Per-model progress
+    # -----------------------------
+    model_runs: List[ModelRunProgressViewModel] = None
 
-    # Progress for each selected model
-    model_runs: List[ModelRunProgressViewModel]
+    # -----------------------------
+    # Exporting results
+    # -----------------------------
+    export_status: TaskStatusEnum = TaskStatusEnum.PENDING
