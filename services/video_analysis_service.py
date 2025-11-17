@@ -5,7 +5,8 @@ video_analysis_service.py
 
 Service for analyzing YouTube videos using various AI providers.
 """
-from typing import Optional, List, Dict, Any
+
+from typing import Optional, List
 
 from enums import ProviderEnum
 from models.domain.video_model_info_model import VideoModelInfo
@@ -92,7 +93,7 @@ class VideoAnalysisService:
         """
         models: list[VideoModelInfo] = []
 
-        for provider_key, model_ids in self.VIDEO_CAPABLE_MODELS.items():
+        for provider_key, model_names in self.VIDEO_CAPABLE_MODELS.items():
 
             # Convert provider (str or enum) → ProviderEnum
             if isinstance(provider_key, ProviderEnum):
@@ -100,12 +101,12 @@ class VideoAnalysisService:
             else:
                 provider_enum = ProviderEnum(provider_key)
 
-            for model_id in model_ids:
+            for model_name in model_names:
                 models.append(
                     VideoModelInfo(
-                        name=model_id,
+                        name=model_name,
                         provider=provider_enum,
-                        display_name=model_id,
+                        display_name=model_name,
                         supports_native_video=True,
                     )
                 )
@@ -117,7 +118,7 @@ class VideoAnalysisService:
         self,
         video_url: str,
         provider: str,
-        model_id: str,
+        model_name: str,
         custom_prompt: Optional[str] = None,
         max_tokens: Optional[int] = None,
         **kwargs,
@@ -128,7 +129,7 @@ class VideoAnalysisService:
         Args:
             video_url: YouTube video URL
             provider: Provider name ('google', 'gemini')
-            model_id: Model identifier (e.g., 'gemini-1.5-flash')
+            model_name: Model name (e.g., 'gemini-1.5-flash')
             custom_prompt: Optional custom summarization prompt
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
@@ -137,23 +138,23 @@ class VideoAnalysisService:
             Video summary as text
         """
         # Validate model supports video
-        if not self._is_video_capable(provider, model_id):
+        if not self._is_video_capable(provider, model_name):
             raise ValueError(
-                f"Model {model_id} from {provider} does not support video analysis"
+                f"Model {model_name} from {provider} does not support video analysis"
             )
 
         # Get adapter
         adapter = self._get_adapter(provider)
 
-        # Execute summarization with model_id
-        return adapter.summarize(video_url, model_id, custom_prompt, max_tokens)
+        # Execute summarization with model_name
+        return adapter.summarize(video_url, model_name, custom_prompt, max_tokens)
 
     # ----------------------------------------------------------------
     def analyze(
         self,
         video_url: str,
         provider: str,
-        model_id: str,
+        model_name: str,
         custom_prompt: str,
         max_tokens: Optional[int] = None,
         **kwargs,
@@ -164,7 +165,7 @@ class VideoAnalysisService:
         Args:
             video_url: YouTube video URL
             provider: Provider name
-            model_id: Model identifier
+            model_name: Model name
             custom_prompt: Custom analysis prompt
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
@@ -173,23 +174,23 @@ class VideoAnalysisService:
             Analysis result as text
         """
         # Validate model supports video
-        if not self._is_video_capable(provider, model_id):
+        if not self._is_video_capable(provider, model_name):
             raise ValueError(
-                f"Model {model_id} from {provider} does not support video analysis"
+                f"Model {model_name} from {provider} does not support video analysis"
             )
 
         # Get adapter
         adapter = self._get_adapter(provider)
 
-        # Execute analysis with model_id
-        return adapter.analyze(video_url, model_id, custom_prompt, max_tokens)
+        # Execute analysis with model_name
+        return adapter.analyze(video_url, model_name, custom_prompt, max_tokens)
 
     # ----------------------------------------------------------------
     def get_key_points(
         self,
         video_url: str,
         provider: str,
-        model_id: str,
+        model_name: str,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:
@@ -199,7 +200,7 @@ class VideoAnalysisService:
         Args:
             video_url: YouTube video URL
             provider: Provider name
-            model_id: Model identifier
+            model_name: Model name
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
 
@@ -210,14 +211,14 @@ class VideoAnalysisService:
             "List the key points discussed in this video. "
             "Format as a bulleted list with brief explanations for each point."
         )
-        return self.analyze(video_url, provider, model_id, prompt, max_tokens, **kwargs)
+        return self.analyze(video_url, provider, model_name, prompt, max_tokens, **kwargs)
 
     # ----------------------------------------------------------------
     def get_transcript_summary(
         self,
         video_url: str,
         provider: str,
-        model_id: str,
+        model_name: str,
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:
@@ -227,7 +228,7 @@ class VideoAnalysisService:
         Args:
             video_url: YouTube video URL
             provider: Provider name
-            model_id: Model identifier
+            model_name: Model name
             max_tokens: Maximum tokens in response (None = provider default)
             **kwargs: Additional arguments for model client
 
@@ -239,10 +240,10 @@ class VideoAnalysisService:
             "organized chronologically. Include timestamps or time references "
             "where possible."
         )
-        return self.analyze(video_url, provider, model_id, prompt, max_tokens, **kwargs)
+        return self.analyze(video_url, provider, model_name, prompt, max_tokens, **kwargs)
 
     # ----------------------------------------------------------------
-    def _is_video_capable(self, provider: str, model_id: str) -> bool:
+    def _is_video_capable(self, provider: str, model_name: str) -> bool:
         """
         Check if a model supports video analysis.
 
@@ -255,7 +256,7 @@ class VideoAnalysisService:
         """
         provider = provider.lower()
         models = self.VIDEO_CAPABLE_MODELS.get(provider, [])
-        return model_id in models
+        return model_name in models
 
     # ----------------------------------------------------------------
     @classmethod
@@ -291,19 +292,14 @@ def main():
 
     # List available models
     print("\nAvailable video-capable models:")
-    models = video_service.list_available_video_models()
-    for i, model in enumerate(models, 1):
-        status = "✅ Available" if model["available"] else "❌ Not configured"
-        print(f"\n  {i}. {model['provider']}/{model['model_id']}")
-        print(f"     Status: {status}")
-        print(f"     Native video: {model['supports_native_video']}")
 
-    # Check if any models are available
-    available_models = [m for m in models if m["available"]]
-    if not available_models:
-        print("\n⚠️  No video-capable models configured!")
-        print("Please configure API keys in Settings.")
-        return
+    models = video_service.list_available_video_models()
+
+    for i, model in enumerate(models, start=1):
+        print(f"\n  {i}. {model.provider}/{model.name}")
+        print(f"     Native video: {getattr(model, 'supports_native_video', False)}")
+
+# No availability check an
 
     # Test video analysis
     print("\n" + "=" * 60)
@@ -316,17 +312,17 @@ def main():
 
     if video_url:
         # Use first available model
-        test_model = available_models[0]
-        provider = test_model["provider"]
-        model_id = test_model["model_id"]
+        test_model = models[0]
+        provider = test_model.provider
+        model_name = test_model.name
 
-        print(f"\nUsing: {provider}/{model_id}")
+        print(f"\nUsing: {provider}/{model_name}")
 
         try:
             # Test summarization
             print("\n📹 Generating summary...")
             summary = video_service.summarize(
-                video_url=video_url, provider=provider, model_id=model_id
+                video_url=video_url, provider=provider, model_name=model_name
             )
 
             print("\n✅ Summary:")
@@ -337,7 +333,7 @@ def main():
             # Test key points extraction
             print("\n📝 Extracting key points...")
             key_points = video_service.get_key_points(
-                video_url=video_url, provider=provider, model_id=model_id
+                video_url=video_url, provider=provider, model_name=model_name
             )
 
             print("\n✅ Key Points:")
@@ -358,3 +354,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# python -m services.video_analysis_service
