@@ -72,7 +72,7 @@ class AnalysisMapper:
         *,
         available_prompt_templates: List[str],
         available_classification_groups: List[str],
-        available_summary_models: List[LLMModelInfoViewModel],
+        available_summary_models: List[VideoModelInfoViewModel],
     ) -> ContentItemDetailViewModel:
         """
         Map a ContentAnalysis + ContentItem domain object into the detail view model.
