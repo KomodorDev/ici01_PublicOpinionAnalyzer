@@ -17,9 +17,8 @@ class SortByEnum(str, Enum):
 
     Values are stored as lowercase strings to match backend/API expectations.
     """
-
-    RELEVANCE = "relevance"
-    DEFAULT = "default" # platform default sorting
+    DEFAULT = "default"  # platform default sorting
+    # RELEVANCE = "relevance"
     # FUTURE:
     # TOP = "top"
     # NEWEST = "newest"

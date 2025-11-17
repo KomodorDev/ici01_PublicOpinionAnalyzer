@@ -12,6 +12,6 @@ class SortDirEnum(str, Enum):
     """
     Sorting direction for ordered comment lists.
     """
-
-    ASC = "asc"
-    DSC = "dsc"
+    DEFAULT = "default"  # platform default sorting
+    # ASC = "asc"
+    # DSC = "dsc"
