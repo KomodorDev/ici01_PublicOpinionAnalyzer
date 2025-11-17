@@ -69,7 +69,7 @@ class AnalysisController:
         # Mapping helpers
         self.analysis_mapper = analysis_mapper or AnalysisMapper()
 
-        self.analysis_view = AnalysisView(self)
+        self.analysis_view = AnalysisView()
 
         self._analysis_thread = None
 
@@ -96,7 +96,21 @@ class AnalysisController:
             info_message=None,
             error_message=None,
         )
-        self.analysis_view.render_analysis_view(view_model=vm)
+
+        self.analysis_view.render_analysis_view(
+            view_model=vm,
+            on_parse_links_clicked=self.on_parse_links_clicked,
+            on_content_clicked=self.on_content_clicked,
+            on_remove_content_clicked=self.on_remove_content_clicked,
+            on_generate_summary_clicked=self.on_generate_summary_clicked,
+            on_summary_save_clicked=self.on_summary_save_clicked,
+            on_sort_changed=self.on_sort_changed,
+            on_limit_changed=self.on_limit_changed,
+            on_prompt_template_changed=self.on_prompt_template_changed,
+            on_classification_group_changed=self.on_classification_group_changed,
+            on_run_analysis_clicked=self.on_run_analysis_clicked,
+            on_analysis_status_polled=self.on_analysis_status_polled,
+        )
 
     # ================================================================
     # Callbacks wired by the view
@@ -317,7 +331,7 @@ class AnalysisController:
             summary_text: str = self.video_analysis_service.summarize(
                 video_url=video_url,
                 provider=provider,
-                model_id=model_name,
+                model_name=model_name,
                 # custom_prompt=None,      # hook for later if you add a custom prompt textbox
                 # max_tokens=None,         # hook for later if you want to cap length
             )
@@ -641,8 +655,9 @@ class AnalysisController:
 
         # Adjust these service calls to your real APIs.
         available_prompt_templates = (
-            self.prompt_template_service.list_all_prompt_template_names(ContentAnalysis.platform)
+            self.prompt_template_service.list_all_prompt_template_names(ca.platform)
         )
+
         available_classification_groups = (
             self.classification_service.list_classification_group_names()
         )
@@ -651,7 +666,7 @@ class AnalysisController:
         # that you then map to LLMModelInfoViewModel.
         summary_model_infos = self.video_analysis_service.list_available_video_models()
         available_summary_models = [
-            self.analysis_mapper.llm_model_info_to_llm_model_info_view_model(m)
+            self.analysis_mapper.video_model_info_to_video_model_info_view_model(m)
             for m in summary_model_infos
         ]
 
