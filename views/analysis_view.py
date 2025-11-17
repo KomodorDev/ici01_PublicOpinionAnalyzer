@@ -1,477 +1,1155 @@
-"""
-analysis_view.py
-================
-
-Gradio-based view for the Analysis page.
-
-This module is UI-only:
-- Renders the AnalysisViewModel returned by the controller.
-- Wires user actions back to the AnalysisController.
-- Uses dataclasses, not dicts, for view models.
-"""
-
 from __future__ import annotations
-from typing import List, Optional, Tuple, TYPE_CHECKING
+
+from typing import Callable, List, Tuple
 import gradio as gr
 
-if TYPE_CHECKING:
-    from controllers.analysis_controller import AnalysisController
+from models.view_models.analysis import AnalysisViewModel, ContentItemDetailViewModel
 
-
-from models.view_models.analysis import (
-    AnalysisViewModel,
-    ContentItemListViewModel,
-    ContentItemDetailViewModel,
-    ContentAnalysisRunViewModel,
-    LLMModelInfoViewModel,
-)
+# forward refs for type hints – you already have these dataclasses somewhere
+# from models.view.analysis_view_model import AnalysisViewModel
+# from models.view.content_item_detail_view_model import ContentItemDetailViewModel
 
 
 class AnalysisView:
     """
-    Gradio view for the Analysis page.
+    Gradio view for managing and running comment analysis.
 
-    Responsible for:
-    - Rendering the UI layout.
-    - Wiring events to AnalysisController callbacks via _handle_* methods.
+    Parameters (via `render_analysis_view`)
+    ---------------------------------------
+    initial_view_model : AnalysisViewModel
+        Snapshot of the current analysis state used to populate the UI on first render.
+        This typically includes:
+            - list of parsed contents (videos/posts) grouped by platform
+            - current selection (platform + content_id)
+            - current sort/limit settings
+            - current prompt template + classification group selections
+            - current analysis / job status, if any
+
+    on_parse_links_clicked : Callable[[str], AnalysisViewModel]
+        Controller callback for the "Parse links" button.
+        Called with:
+            raw_text: str       - text area content containing one or more URLs
+        Returns:
+            Updated AnalysisViewModel with parsed content items added / updated.
+
+    on_content_clicked : Callable[[str, str], ContentItemDetailViewModel]
+        Controller callback when a user clicks/selects a specific content item.
+        Called with:
+            platform_str: str   - platform identifier (e.g. "youtube", "reddit")
+            content_id: str     - internal content id
+        Returns:
+            ContentItemDetailViewModel describing that content item (metadata, comments, etc.).
+
+    on_remove_content_clicked : Callable[[str, str], AnalysisViewModel]
+        Controller callback for a "Remove content" action.
+        Called with:
+            platform_str: str
+            content_id: str
+        Returns:
+            Updated AnalysisViewModel after removing the content item.
+
+    on_generate_summary_clicked : Callable[[str, str, str, str], str]
+        Controller callback for "Generate summary" on a specific content item.
+        Called with:
+            platform_str: str
+            content_id: str
+            provider: str       - LLM provider identifier (e.g. "openai", "google")
+            model_name: str     - concrete model name (e.g. "gpt-4o-mini")
+        Returns:
+            The generated summary text as a string (to fill a summary textbox).
+
+    on_summary_save_clicked : Callable[[str, str, str], None]
+        Controller callback when a user edits and saves the summary text.
+        Called with:
+            platform_str: str
+            content_id: str
+            new_text: str       - new summary text to persist
+        Returns:
+            None. Controller is responsible for saving; view will usually show a toast.
+
+    on_sort_changed : Callable[[str, str, str, str], None]
+        Controller callback when the user changes the comment sorting.
+        Called with:
+            platform_str: str
+            content_id: str
+            sort_by: str        - sort key (e.g. "RELEVANCE", "TIME")
+            sort_dir: str       - sort direction ("ASC" / "DESC")
+        Returns:
+            None. The controller updates internal state; the view will typically trigger
+            a refresh via `on_analysis_status_polled` or another callback.
+
+    on_limit_changed : Callable[[str, str, int], None]
+        Controller callback when the user changes the "limit" (number of comments).
+        Called with:
+            platform_str: str
+            content_id: str
+            limit: int          - new comment limit
+        Returns:
+            None.
+
+    on_prompt_template_changed : Callable[[str, str, str], None]
+        Controller callback when the user selects a different prompt template
+        for a given content item.
+        Called with:
+            platform_str: str
+            content_id: str
+            template_name: str  - name of the selected prompt template
+        Returns:
+            None.
+
+    on_classification_group_changed : Callable[[str, str, str], None]
+        Controller callback when the user selects a different classification group.
+        Called with:
+            platform_str: str
+            content_id: str
+            group_id: str       - identifier of the selected classification group
+        Returns:
+            None.
+
+    on_run_analysis_clicked : Callable[[List[Tuple[str, str]]], None]
+        Controller callback for the main "Run analysis" action.
+        Called with:
+            selected_models: List[Tuple[provider, model_name]]
+                Example: [("openai", "gpt-4o-mini"), ("google", "gemini-1.5-flash")]
+        Returns:
+            None. The controller starts analysis jobs; the view will usually poll status.
+
+    on_analysis_status_polled : Callable[[], AnalysisViewModel]
+        Controller callback used for polling analysis status (e.g. via a Timer).
+        Called with:
+            no arguments
+        Returns:
+            Updated AnalysisViewModel (job progress, per-content status, etc.).
+
+    Behavior
+    --------
+    - Renders the main "Analysis" screen:
+        * link input / parse button
+        * list of parsed contents per platform
+        * per-content controls (sort, limit, prompt template, classification group)
+        * summary generation and editing
+        * run-analysis controls and live status
+    - All stateful operations (parsing, selection, sorting, saving, running jobs)
+      are delegated to the controller via the injected callables.
+    - The view is stateless between calls: it renders whatever the passed-in
+      AnalysisViewModel describes and uses `gr.update(...)` for UI updates.
     """
-
-    def __init__(self, analysis_controller: AnalysisController) -> None:
-        self.analysis_controller = analysis_controller
-
-        # UI component handles (set in render_analysis_view)
-        self.urls_tb: Optional[gr.Textbox] = None
-
-        self.content_radio: Optional[gr.Radio] = None
-        self.remove_btn: Optional[gr.Button] = None
-
-        self.summary_model_dd: Optional[gr.Dropdown] = None
-        self.prompt_template_dd: Optional[gr.Dropdown] = None
-        self.class_group_dd: Optional[gr.Dropdown] = None
-
-        self.summary_tb: Optional[gr.Textbox] = None
-        self.limit_slider: Optional[gr.Slider] = None
-        self.run_models_cb: Optional[gr.CheckboxGroup] = None
-
-        self.progress_md: Optional[gr.Markdown] = None
-        self.info_md: Optional[gr.Markdown] = None
-        self.error_md: Optional[gr.Markdown] = None
 
     # ================================================================
     # ENTRY POINT
     # ================================================================
-    def render_analysis_view(self, view_model: AnalysisViewModel) -> None:
+    def render_analysis_view(
+        self,
+        *,
+        view_model: AnalysisViewModel,
+        on_parse_links_clicked: Callable[[str], AnalysisViewModel],
+        on_content_clicked: Callable[[str, str], ContentItemDetailViewModel],
+        on_remove_content_clicked: Callable[[str, str], AnalysisViewModel],
+        on_generate_summary_clicked: Callable[[str, str, str, str], str],
+        on_summary_save_clicked: Callable[[str, str, str], None],
+        on_sort_changed: Callable[[str, str, str, str], None],
+        on_limit_changed: Callable[[str, str, int], None],
+        on_prompt_template_changed: Callable[[str, str, str], None],
+        on_classification_group_changed: Callable[[str, str, str], None],
+        on_run_analysis_clicked: Callable[[List[Tuple[str, str]]], None],
+        on_analysis_status_polled: Callable[[], AnalysisViewModel],
+    ) -> None:
         """
-        Render the complete Analysis view using Gradio components.
+        Render the complete Analysis management view using Gradio components.
 
-        This is the main entry point called by the controller.
+        This method builds the layout (link input, content list, comment table,
+        summary editor, model selection, run button, status area) and wires all
+        user interactions to the provided controller callbacks.
+
+        The `initial_view_model` snapshot is used to populate the UI on first render;
+        subsequent updates are driven via the callbacks and polling.
         """
-        # ----------------------------------------------------------------
-        # Helper: extract choices from LLMModelInfoViewModel list
-        # ----------------------------------------------------------------
-        def _llm_choices(models: Optional[List[LLMModelInfoViewModel]]) -> List[str]:
-            if not models:
-                return []
-            # You may decide to encode provider+model_name into the label later.
-            return [m.label for m in models]
 
-        # ----------------------------------------------------------------
-        # Layout
-        # ----------------------------------------------------------------
+        # maps radio label -> (platform_enum, content_id)
+        content_index: dict[str, tuple[object, str]] = {}
+
+        # maps summary model display label -> (provider, model_name)
+        summary_model_index: dict[str, tuple[str, str]] = {}
+
+        # ================================================================
+        # LAYOUT
+        # ================================================================
         with gr.Column():
 
-            # ============================================================
-            # TOP ROW: Paste URLs + "Parse links"
-            # ============================================================
-            with gr.Row():
-                self.urls_tb = gr.Textbox(
-                    label="Paste URLs",
-                    placeholder="One URL per line…",
-                    lines=4,
-                    interactive=True,
-                )
-                parse_btn = gr.Button("Parse links", variant="primary")
+            # ----------------------------------------------------------------
+            # 1) TOP: link input + parse button
+            # ----------------------------------------------------------------
+            link_input_tb = gr.Textbox(
+                label="Paste links (one per line or separated by spaces)",
+                placeholder="https://www.youtube.com/watch?v=...\nhttps://www.youtube.com/watch?v=...",
+                lines=3,
+                interactive=True,
+            )
 
-            # Messages (info / error)
-            with gr.Row():
-                self.info_md = gr.Markdown(
-                    value=view_model.info_message or "",
-                    elem_id="analysis-info-message",
-                )
-                self.error_md = gr.Markdown(
-                    value=view_model.error_message or "",
-                    elem_id="analysis-error-message",
-                )
+            parse_links_btn = gr.Button(
+                "Parse Links",
+                variant="primary",
+                scale=1,
+            )
 
             gr.Markdown("---")
 
-            # ============================================================
-            # SECOND ROW: Left = content list, Right = detail + run
-            # ============================================================
+            # ----------------------------------------------------------------
+            # 2) MAIN BODY: left list + right detail
+            #    Initially: no content items, no details
+            # ----------------------------------------------------------------
             with gr.Row():
 
-                # ---------------- LEFT COLUMN: Content list ----------------
+                # ---------------- LEFT: scrollable content list ----------------
                 with gr.Column(scale=1):
-                    gr.Markdown("### Parsed content")
-
-                    contents = view_model.contents or []
-                    content_choices = self._content_choices_from_list(contents)
-
-                    self.content_radio = gr.Radio(
-                        label="Content items",
-                        choices=content_choices,
-                        value=content_choices[0] if content_choices else None,
+                    gr.Markdown("### Content Item List")
+                    content_list_radio = gr.Radio(
+                        label="Parsed content items",
+                        choices=[],  # starts empty
+                        value=None,
                         interactive=True,
                     )
+                    # We'll keep a parallel list of content_ids in the closure later.
 
-                    self.remove_btn = gr.Button("Remove selected")
-
-                # ---------------- RIGHT COLUMN: Detail / Settings / Run -----
+                # ---------------- RIGHT: detail view ----------------
                 with gr.Column(scale=3):
-                    gr.Markdown("### Details & Analysis")
 
-                    # Summary model dropdown
-                    self.summary_model_dd = gr.Dropdown(
-                        label="Summary model",
-                        choices=_llm_choices(view_model.available_llm_models),
-                        interactive=True,
-                    )
+                    gr.Markdown("### Content Item Details")
 
-                    # Prompt template + classification group
-                    self.prompt_template_dd = gr.Dropdown(
-                        label="Prompt template",
-                        choices=[],  # will be provided by detail view model later
-                        interactive=True,
-                    )
-                    self.class_group_dd = gr.Dropdown(
-                        label="Classification group",
-                        choices=[],
-                        interactive=True,
-                    )
+                    # Basic metadata (empty on first render)
 
-                    # Summary text
-                    self.summary_tb = gr.Textbox(
+                    with gr.Group():
+                        with gr.Row():
+                            title_md = gr.Markdown(
+                                value="""
+                                <div style='padding: 12px 16px; margin-bottom: 12px; font-size:1.15rem;'>
+                                <a href="#" target="_blank" style="text-decoration:none; color:#4ea1ff;">
+                                    -
+                                </a>
+                                </div>
+                                """
+                            )
+
+                        with gr.Row():
+                            platform_tb = gr.Textbox(
+                                label="Platform",
+                                value="-",
+                                interactive=False,
+                            )
+                            author_tb = gr.Textbox(
+                                label="Author",
+                                value="-",
+                                interactive=False,
+                            )
+
+                        with gr.Row():
+                            view_count_tb = gr.Textbox(
+                                label="Views",
+                                value="0",
+                                interactive=False,
+                            )
+                            like_count_tb = gr.Textbox(
+                                label="Likes",
+                                value="0",
+                                interactive=False,
+                            )
+                            comment_count_tb = gr.Textbox(
+                                label="Comments",
+                                value="0",
+                                interactive=False,
+                            )
+
+                    gr.Markdown("### Summary")
+
+                    # Summary text (empty, editable)
+                    summary_tb = gr.Textbox(
                         label="Summary",
-                        lines=10,
+                        value="",
+                        lines=6,
                         interactive=True,
                     )
 
                     with gr.Row():
-                        gen_sum_btn = gr.Button("Generate summary", variant="primary")
-                        save_sum_btn = gr.Button("Save summary")
+                        summary_source_tb = gr.Textbox(
+                            label="Summary Source (read-only)",
+                            value="N/A",
+                            interactive=False,
+                        )
 
-                    gr.Markdown("---")
+                        summary_model_dd = gr.Dropdown(
+                            label="Summary Model",
+                            choices=[],  # populated after models are known
+                            value=None,
+                            interactive=True,
+                        )
 
-                    # Limit slider
-                    self.limit_slider = gr.Slider(
-                        minimum=10,
-                        maximum=500,
-                        step=10,
-                        value=100,
-                        label="Max comments to analyze",
-                        interactive=True,
-                    )
+                    with gr.Row():
+                        generate_summary_btn = gr.Button(
+                            "Generate Summary",
+                            variant="primary",
+                        )
+                        save_summary_btn = gr.Button(
+                            "Save Summary",
+                            variant="secondary",
+                        )
+                        cancel_summary_btn = gr.Button(
+                            "Cancel",
+                            variant="secondary",
+                        )
 
-                    gr.Markdown("---")
+                    gr.Markdown("### Analysis Configuration")
 
-                    # Select LLM models for analysis
-                    self.run_models_cb = gr.CheckboxGroup(
-                        label="LLM models for analysis",
-                        choices=_llm_choices(view_model.available_llm_models),
-                        interactive=True,
-                    )
+                    with gr.Row():
+                        prompt_template_dd = gr.Dropdown(
+                            label="Prompt Template",
+                            choices=[],
+                            value=None,
+                            interactive=True,
+                        )
+                        class_group_dd = gr.Dropdown(
+                            label="Classification Group",
+                            choices=[],
+                            value=None,
+                            interactive=True,
+                        )
 
-                    run_btn = gr.Button("Run analysis", variant="primary")
+                    with gr.Row():
+                        sort_by_dd = gr.Dropdown(
+                            label="Sort By",
+                            choices=["RELEVANCE", "TIME", "LIKES"],
+                            value="RELEVANCE",
+                            interactive=True,
+                        )
+                        sort_dir_dd = gr.Dropdown(
+                            label="Sort Direction",
+                            choices=["ASC", "DESC"],
+                            value="DESC",
+                            interactive=True,
+                        )
+                        limit_tb = gr.Textbox(
+                            label="Limit (number of comments, empty = no limit)",
+                            value="",
+                            interactive=True,
+                        )
 
-                    gr.Markdown("### Analysis progress")
-                    self.progress_md = gr.Markdown(value="No runs yet.")
+                    with gr.Row():
+                        remove_content_btn = gr.Button(
+                            "Remove Content Item",
+                            variant="stop",
+                        )
 
-            # ============================================================
-            # POLLING TIMER
-            # ============================================================
-            # You can later wire outputs to specific components (e.g. progress_md)
-            timer = gr.Timer(1.0, active=True)  # 1.0 seconds between ticks
+        with gr.Column():
 
-            timer.tick(
-                fn=self._handle_analysis_status_polled,
-                outputs=[],  # or just omit this if you really don't return anything
+            # ----------------------------------------------------------------
+            # 3) Model Selection
+            # ----------------------------------------------------------------
+
+            gr.Markdown("---")
+
+            gr.Markdown("### Model Selection")
+
+            # Placeholder for selected models; real UI wired later
+            selected_models_info_tb = gr.Textbox(
+                label="Selected models (debug / placeholder)",
+                value="No models selected yet.",
+                interactive=False,
+            )
+
+            # ----------------------------------------------------------------
+            # 4) Run Analysis
+            # ----------------------------------------------------------------
+
+            gr.Markdown("---")
+
+            gr.Markdown("### Run Analysis")
+
+            run_analysis_btn = gr.Button(
+                "Run Analysis",
+                variant="primary",
+            )
+
+            # NEW: Progress overview (Markdown table)
+            analysis_progress_md = gr.Markdown(
+                value="_No running analyses yet._",
+                visible=True,
             )
 
         # ================================================================
-        # EVENT WIRING
+        # WIRING
         # ================================================================
-        # Parse links
-        parse_btn.click(  # pylint: disable=no-member
-            fn=self._handle_parse_links_clicked,
-            inputs=[self.urls_tb],
-            outputs=[],
-        )
 
-        # Content selection changed
-        self.content_radio.change(  # pylint: disable=no-member
-            fn=self._handle_content_clicked,
-            inputs=[self.content_radio],
-            outputs=[],
-        )
+        # ---------------------------------------------------------
+        def _handle_parse_links_clicked(raw_text: str):
+            """
+            Called when user presses 'Parse Links'.
+            - raw_text: content of link_input_tb
+            """
 
-        # Remove selected content
-        self.remove_btn.click(  # pylint: disable=no-member
-            fn=self._handle_remove_content_clicked,
-            inputs=[self.content_radio],
-            outputs=[],
-        )
+            # 1) Ask controller to parse links → returns new AnalysisViewModel
+            vm = on_parse_links_clicked(raw_text)
 
-        # Generate summary
-        gen_sum_btn.click(  # pylint: disable=no-member
-            fn=self._handle_generate_summary_clicked,
-            inputs=[
-                self.content_radio,       # which content
-                self.summary_model_dd,    # which model
+            # 2a) Build new choices for the content list
+            new_labels: list[str] = []
+            content_index.clear()  # reset mapping
+
+            # 2b) Summary models (VideoModelInfoViewModel → labels)
+            sm_choices: list[str] = []
+            summary_model_index.clear()
+
+            for mdl in vm.selected.available_summary_models or []:
+                provider = getattr(mdl, "provider", "?")
+                model_name = getattr(mdl, "model_name", "?")
+                display_name = getattr(mdl, "display_name", None)
+                if not display_name:
+                    display_name = f"{provider}:{model_name}"
+
+                sm_choices.append(display_name)
+                summary_model_index[display_name] = (provider, model_name)
+
+            sm_value = sm_choices[0] if sm_choices else None
+
+            # 2c) Build content list labels + index
+            if vm.contents:
+                for ci in vm.contents:
+                    platform_str = getattr(ci.platform, "value", str(ci.platform))
+                    label = f"[{platform_str}] {ci.author} — {ci.title}"
+                    new_labels.append(label)
+                    # store the actual enum + content_id so we can use it later
+                    content_index[label] = (ci.platform, ci.content_id)
+
+            # 3) Determine which item should be selected in the radio
+            #    We use vm.selected (ContentItemDetailViewModel) if present.
+            selected_vm = vm.selected
+            auto_value = None
+
+            if selected_vm is not None:
+                sel_platform_str = getattr(
+                    selected_vm.platform, "value", str(selected_vm.platform)
+                )
+                sel_label = (
+                    f"[{sel_platform_str}] {selected_vm.author} — {selected_vm.title}"
+                )
+                if sel_label in new_labels:
+                    auto_value = sel_label
+            elif new_labels:
+                # fallback: select the first item if no selected is set
+                auto_value = new_labels[0]
+
+            # 4) If we have a selected detail VM, fill the right panel from it
+            if selected_vm is not None:
+                platform_val = getattr(
+                    selected_vm.platform, "value", str(selected_vm.platform)
+                )
+                author_val = selected_vm.author or "-"
+                title_val = (
+                    f"""
+                <div style='padding: 12px 16px; margin-bottom: 12px; font-size:1.15rem;'>
+                <a href="{selected_vm.url}" target="_blank" style="text-decoration:none; color:#4ea1ff;">
+                    {selected_vm.title}
+                </a>
+                </div>
+                """
+                    or "-"
+                )
+                view_count_val = str(selected_vm.view_count or 0)
+                like_count_val = str(selected_vm.like_count or 0)
+                comment_count_val = str(selected_vm.comment_count or 0)
+
+                summary_text_val = selected_vm.summary_text or ""
+                summary_source_val = selected_vm.summary_source or "N/A"
+
+                # Prompt templates
+                pt_choices = selected_vm.available_prompt_templates or []
+                pt_value = selected_vm.selected_prompt_template_name
+                if pt_value not in pt_choices:
+                    pt_value = pt_choices[0] if pt_choices else None
+
+                # Classification groups
+                cg_choices = selected_vm.available_classification_groups or []
+                cg_value = selected_vm.selected_classification_group_name
+                if cg_value not in cg_choices:
+                    cg_value = cg_choices[0] if cg_choices else None
+
+                # Sort options
+                sort_by_choices = [
+                    getattr(opt, "value", str(opt))
+                    for opt in (selected_vm.available_sort_by_options or [])
+                ]
+                sort_by_value = getattr(
+                    selected_vm.sort_by, "value", str(selected_vm.sort_by)
+                )
+                if sort_by_choices and sort_by_value not in sort_by_choices:
+                    sort_by_value = sort_by_choices[0]
+
+                sort_dir_choices = [
+                    getattr(opt, "value", str(opt))
+                    for opt in (selected_vm.available_sort_dir_options or [])
+                ]
+                sort_dir_value = getattr(
+                    selected_vm.sort_dir, "value", str(selected_vm.sort_dir)
+                )
+                if sort_dir_choices and sort_dir_value not in sort_dir_choices:
+                    sort_dir_value = sort_dir_choices[0]
+
+                # Limit (int → textbox string; 0 or None means empty)
+                limit_int = selected_vm.limit
+                limit_val = (
+                    "" if (limit_int is None or limit_int == 0) else str(limit_int)
+                )
+
+                # Summary models (VideoModelInfoViewModel → labels)
+                sm_choices: list[str] = []
+                for mdl in selected_vm.available_summary_models or []:
+                    # heuristic: try display_name, fall back to "provider:model_name"
+                    display_name = getattr(mdl, "display_name", None)
+                    if not display_name:
+                        provider = getattr(mdl, "provider", "?")
+                        model_name = getattr(mdl, "model_name", "?")
+                        display_name = f"{provider}:{model_name}"
+                    sm_choices.append(display_name)
+
+                # we don't (yet) have a selected summary model field; start with None
+                sm_value = sm_choices[0] if sm_choices else None
+
+                return (
+                    gr.update(
+                        choices=new_labels, value=auto_value
+                    ),  # content_list_radio
+                    gr.update(value=title_val),  # title_tb
+                    gr.update(value=platform_val),  # platform_tb
+                    gr.update(value=author_val),  # author_tb
+                    gr.update(value=view_count_val),  # view_count_tb
+                    gr.update(value=like_count_val),  # like_count_tb
+                    gr.update(value=comment_count_val),  # comment_count_tb
+                    gr.update(value=summary_text_val),  # summary_tb
+                    gr.update(value=summary_source_val),  # summary_source_tb
+                    gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
+                    gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
+                    gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                    gr.update(
+                        choices=sort_by_choices, value=sort_by_value
+                    ),  # sort_by_dd
+                    gr.update(
+                        choices=sort_dir_choices, value=sort_dir_value
+                    ),  # sort_dir_dd
+                    gr.update(value=limit_val),  # limit_tb
+                )
+
+            # 5) If there is still no selected item, fall back to "empty detail" state
+            return (
+                gr.update(choices=new_labels, value=auto_value),  # content_list_radio
+                gr.update(value="-"),  # title_tb
+                gr.update(value="-"),  # platform_tb
+                gr.update(value="-"),  # author_tb
+                gr.update(value="0"),  # view_count_tb
+                gr.update(value="0"),  # like_count_tb
+                gr.update(value="0"),  # comment_count_tb
+                gr.update(value=""),  # summary_tb
+                gr.update(value="N/A"),  # summary_source_tb
+                gr.update(choices=[], value=None),  # summary_model_dd
+                gr.update(choices=[], value=None),  # prompt_template_dd
+                gr.update(choices=[], value=None),  # class_group_dd
+                gr.update(
+                    choices=["RELEVANCE", "TIME", "LIKES"], value="RELEVANCE"
+                ),  # sort_by_dd
+                gr.update(choices=["ASC", "DESC"], value="DESC"),  # sort_dir_dd
+                gr.update(value=""),  # limit_tb
+            )
+
+        parse_links_btn.click(
+            fn=_handle_parse_links_clicked,
+            inputs=[link_input_tb],
+            outputs=[
+                content_list_radio,
+                title_md,
+                platform_tb,
+                author_tb,
+                view_count_tb,
+                like_count_tb,
+                comment_count_tb,
+                summary_tb,
+                summary_source_tb,
+                summary_model_dd,
+                prompt_template_dd,
+                class_group_dd,
+                sort_by_dd,
+                sort_dir_dd,
+                limit_tb,
             ],
-            outputs=[self.summary_tb],
         )
 
-        # Save summary (manual text)
-        save_sum_btn.click(  # pylint: disable=no-member
-            fn=self._handle_summary_save_clicked,
-            inputs=[
-                self.content_radio,
-                self.summary_tb,
+        # ---------------------------------------------------------
+        # - content_list_radio.change(...)
+        def _handle_content_clicked(selected_label: str):
+            """
+            Called when a user selects a different content item in the radio list.
+            We look up platform + content_id from content_index, ask the controller
+            for a ContentItemDetailViewModel, and fill the right-hand panel.
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                # nothing to do; return no-op updates
+                return (
+                    gr.update(),  # title_md
+                    gr.update(),  # platform_tb
+                    gr.update(),  # author_tb
+                    gr.update(),  # view_count_tb
+                    gr.update(),  # like_count_tb
+                    gr.update(),  # comment_count_tb
+                    gr.update(),  # summary_tb
+                    gr.update(),  # summary_source_tb
+                    gr.update(),  # summary_model_dd
+                    gr.update(),  # prompt_template_dd
+                    gr.update(),  # class_group_dd
+                    gr.update(),  # sort_by_dd
+                    gr.update(),  # sort_dir_dd
+                    gr.update(),  # limit_tb
+                )
+
+            platform_enum, content_id = entry
+
+            # Ask controller for detail VM
+            selected_vm = on_content_clicked(platform_enum, content_id)
+            if selected_vm is None:
+                return (
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                    gr.update(),
+                )
+
+            # Summary models (VideoModelInfoViewModel → labels)
+            sm_choices: list[str] = []
+            summary_model_index.clear()
+
+            for mdl in selected_vm.available_summary_models or []:
+                provider = getattr(mdl, "provider", "?")
+                model_name = getattr(mdl, "model_name", "?")
+                display_name = getattr(mdl, "display_name", None)
+                if not display_name:
+                    display_name = f"{provider}:{model_name}"
+
+                sm_choices.append(display_name)
+                summary_model_index[display_name] = (provider, model_name)
+
+            sm_value = sm_choices[0] if sm_choices else None
+
+            # Set values from selected_vm
+            platform_val = getattr(
+                selected_vm.platform, "value", str(selected_vm.platform)
+            )
+            author_val = selected_vm.author or "-"
+
+            # Nicely formatted HTML link with padding
+            title_html = (
+                f"<div style='padding: 12px 16px; margin-bottom: 12px; font-size:1.15rem;'>"
+                f'<a href="{selected_vm.url}" target="_blank" '
+                f'style="text-decoration:none; color:#4ea1ff;">'
+                f"{selected_vm.title}"
+                f"</a></div>"
+            )
+
+            view_count_val = str(selected_vm.view_count or 0)
+            like_count_val = str(selected_vm.like_count or 0)
+            comment_count_val = str(selected_vm.comment_count or 0)
+
+            summary_text_val = selected_vm.summary_text or ""
+            summary_source_val = selected_vm.summary_source or "N/A"
+
+            # Prompt templates
+            pt_choices = selected_vm.available_prompt_templates or []
+            pt_value = selected_vm.selected_prompt_template_name
+            if pt_value not in pt_choices:
+                pt_value = pt_choices[0] if pt_choices else None
+
+            # Classification groups
+            cg_choices = selected_vm.available_classification_groups or []
+            cg_value = selected_vm.selected_classification_group_name
+            if cg_value not in cg_choices:
+                cg_value = cg_choices[0] if cg_choices else None
+
+            # Sort options
+            sort_by_choices = [
+                getattr(opt, "value", str(opt))
+                for opt in (selected_vm.available_sort_by_options or [])
+            ]
+            sort_by_value = getattr(
+                selected_vm.sort_by, "value", str(selected_vm.sort_by)
+            )
+            if sort_by_choices and sort_by_value not in sort_by_choices:
+                sort_by_value = sort_by_choices[0]
+
+            sort_dir_choices = [
+                getattr(opt, "value", str(opt))
+                for opt in (selected_vm.available_sort_dir_options or [])
+            ]
+            sort_dir_value = getattr(
+                selected_vm.sort_dir, "value", str(selected_vm.sort_dir)
+            )
+            if sort_dir_choices and sort_dir_value not in sort_dir_choices:
+                sort_dir_value = sort_dir_choices[0]
+
+            limit_int = selected_vm.limit
+            limit_val = "" if (limit_int is None or limit_int == 0) else str(limit_int)
+
+            # Summary models
+            sm_choices: list[str] = []
+            for mdl in selected_vm.available_summary_models or []:
+                display_name = getattr(mdl, "display_name", None)
+                if not display_name:
+                    provider = getattr(mdl, "provider", "?")
+                    model_name = getattr(mdl, "model_name", "?")
+                    display_name = f"{provider}:{model_name}"
+                sm_choices.append(display_name)
+            sm_value = sm_choices[0] if sm_choices else None
+
+            return (
+                gr.update(value=title_html),  # title_md
+                gr.update(value=platform_val),  # platform_tb
+                gr.update(value=author_val),  # author_tb
+                gr.update(value=view_count_val),  # view_count_tb
+                gr.update(value=like_count_val),  # like_count_tb
+                gr.update(value=comment_count_val),  # comment_count_tb
+                gr.update(value=summary_text_val),  # summary_tb
+                gr.update(value=summary_source_val),  # summary_source_tb
+                gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
+                gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
+                gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
+                gr.update(
+                    choices=sort_dir_choices, value=sort_dir_value
+                ),  # sort_dir_dd
+                gr.update(value=limit_val),  # limit_tb
+            )
+
+        content_list_radio.change(
+            fn=_handle_content_clicked,
+            inputs=[content_list_radio],
+            outputs=[
+                title_md,
+                platform_tb,
+                author_tb,
+                view_count_tb,
+                like_count_tb,
+                comment_count_tb,
+                summary_tb,
+                summary_source_tb,
+                summary_model_dd,
+                prompt_template_dd,
+                class_group_dd,
+                sort_by_dd,
+                sort_dir_dd,
+                limit_tb,
             ],
-            outputs=[],
         )
 
-        # Limit changed
-        self.limit_slider.change(  # pylint: disable=no-member
-            fn=self._handle_limit_changed,
-            inputs=[self.content_radio, self.limit_slider],
-            outputs=[],
+        # ---------------------------------------------------------
+        def _handle_remove_content_clicked(selected_label: str):
+            """
+            Called when user presses 'Remove content' for the currently selected item.
+            - selected_label: current value of content_list_radio
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                # Nothing mapped → nothing to delete → no-op updates
+                return (
+                    gr.update(),  # content_list_radio
+                    gr.update(),  # title_md
+                    gr.update(),  # platform_tb
+                    gr.update(),  # author_tb
+                    gr.update(),  # view_count_tb
+                    gr.update(),  # like_count_tb
+                    gr.update(),  # comment_count_tb
+                    gr.update(),  # summary_tb
+                    gr.update(),  # summary_source_tb
+                    gr.update(),  # summary_model_dd
+                    gr.update(),  # prompt_template_dd
+                    gr.update(),  # class_group_dd
+                    gr.update(),  # sort_by_dd
+                    gr.update(),  # sort_dir_dd
+                    gr.update(),  # limit_tb
+                )
+
+            platform_enum, content_id = entry
+
+            # 1) Ask controller to remove this content → returns new AnalysisViewModel
+            vm = on_remove_content_clicked(platform_enum, content_id)
+
+            # 2) Rebuild left list from vm.contents
+            new_labels: list[str] = []
+            content_index.clear()
+
+            if vm.contents:
+                for ci in vm.contents:
+                    plat_str = getattr(ci.platform, "value", str(ci.platform))
+                    label = f"[{plat_str}] {ci.author} — {ci.title}"
+                    new_labels.append(label)
+                    content_index[label] = (ci.platform, ci.content_id)
+
+            # 3) Determine new selected item (vm.selected, or first, or None)
+            selected_vm = vm.selected
+            auto_value = None
+
+            if selected_vm is not None:
+                sel_plat_str = getattr(
+                    selected_vm.platform, "value", str(selected_vm.platform)
+                )
+                sel_label = (
+                    f"[{sel_plat_str}] {selected_vm.author} — {selected_vm.title}"
+                )
+                if sel_label in new_labels:
+                    auto_value = sel_label
+            elif new_labels:
+                auto_value = new_labels[0]
+
+            # 4) If still no selected_vm after removal, clear the detail panel
+            if selected_vm is None:
+                return (
+                    gr.update(
+                        choices=new_labels, value=auto_value
+                    ),  # content_list_radio
+                    gr.update(value="-"),  # title_md
+                    gr.update(value="-"),  # platform_tb
+                    gr.update(value="-"),  # author_tb
+                    gr.update(value="0"),  # view_count_tb
+                    gr.update(value="0"),  # like_count_tb
+                    gr.update(value="0"),  # comment_count_tb
+                    gr.update(value=""),  # summary_tb
+                    gr.update(value="N/A"),  # summary_source_tb
+                    gr.update(choices=[], value=None),  # summary_model_dd
+                    gr.update(choices=[], value=None),  # prompt_template_dd
+                    gr.update(choices=[], value=None),  # class_group_dd
+                    gr.update(
+                        choices=["RELEVANCE", "TIME", "LIKES"], value="RELEVANCE"
+                    ),  # sort_by_dd
+                    gr.update(choices=["ASC", "DESC"], value="DESC"),  # sort_dir_dd
+                    gr.update(value=""),  # limit_tb
+                )
+
+            # 5) We have a selected detail VM → fill right panel like in _handle_parse_links
+            platform_val = getattr(
+                selected_vm.platform, "value", str(selected_vm.platform)
+            )
+            author_val = selected_vm.author or "-"
+
+            title_html = (
+                f"<div style='padding: 12px 16px; margin-bottom: 12px; font-size:1.15rem;'>"
+                f'<a href="{selected_vm.url}" target="_blank" '
+                f'style="text-decoration:none; color:#4ea1ff;">'
+                f"{selected_vm.title}"
+                f"</a></div>"
+            )
+
+            view_count_val = str(selected_vm.view_count or 0)
+            like_count_val = str(selected_vm.like_count or 0)
+            comment_count_val = str(selected_vm.comment_count or 0)
+
+            summary_text_val = selected_vm.summary_text or ""
+            summary_source_val = selected_vm.summary_source or "N/A"
+
+            # Prompt templates
+            pt_choices = selected_vm.available_prompt_templates or []
+            pt_value = selected_vm.selected_prompt_template_name
+            if pt_value not in pt_choices:
+                pt_value = pt_choices[0] if pt_choices else None
+
+            # Classification groups
+            cg_choices = selected_vm.available_classification_groups or []
+            cg_value = selected_vm.selected_classification_group_name
+            if cg_value not in cg_choices:
+                cg_value = cg_choices[0] if cg_choices else None
+
+            # Sort options
+            sort_by_choices = [
+                getattr(opt, "value", str(opt))
+                for opt in (selected_vm.available_sort_by_options or [])
+            ]
+            sort_by_value = getattr(
+                selected_vm.sort_by, "value", str(selected_vm.sort_by)
+            )
+            if sort_by_choices and sort_by_value not in sort_by_choices:
+                sort_by_value = sort_by_choices[0]
+
+            sort_dir_choices = [
+                getattr(opt, "value", str(opt))
+                for opt in (selected_vm.available_sort_dir_options or [])
+            ]
+            sort_dir_value = getattr(
+                selected_vm.sort_dir, "value", str(selected_vm.sort_dir)
+            )
+            if sort_dir_choices and sort_dir_value not in sort_dir_choices:
+                sort_dir_value = sort_dir_choices[0]
+
+            limit_int = selected_vm.limit
+            limit_val = "" if (limit_int is None or limit_int == 0) else str(limit_int)
+
+            # Summary models
+            sm_choices: list[str] = []
+            for mdl in selected_vm.available_summary_models or []:
+                display_name = getattr(mdl, "display_name", None)
+                if not display_name:
+                    provider = getattr(mdl, "provider", "?")
+                    model_name = getattr(mdl, "model_name", "?")
+                    display_name = f"{provider}:{model_name}"
+                sm_choices.append(display_name)
+            sm_value = sm_choices[0] if sm_choices else None
+
+            return (
+                gr.update(choices=new_labels, value=auto_value),  # content_list_radio
+                gr.update(value=title_html),  # title_md
+                gr.update(value=platform_val),  # platform_tb
+                gr.update(value=author_val),  # author_tb
+                gr.update(value=view_count_val),  # view_count_tb
+                gr.update(value=like_count_val),  # like_count_tb
+                gr.update(value=comment_count_val),  # comment_count_tb
+                gr.update(value=summary_text_val),  # summary_tb
+                gr.update(value=summary_source_val),  # summary_source_tb
+                gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
+                gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
+                gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
+                gr.update(
+                    choices=sort_dir_choices, value=sort_dir_value
+                ),  # sort_dir_dd
+                gr.update(value=limit_val),  # limit_tb
+            )
+
+        remove_content_btn.click(
+            fn=_handle_remove_content_clicked,
+            inputs=[content_list_radio],  # current selection
+            outputs=[
+                content_list_radio,
+                title_md,
+                platform_tb,
+                author_tb,
+                view_count_tb,
+                like_count_tb,
+                comment_count_tb,
+                summary_tb,
+                summary_source_tb,
+                summary_model_dd,
+                prompt_template_dd,
+                class_group_dd,
+                sort_by_dd,
+                sort_dir_dd,
+                limit_tb,
+            ],
         )
 
-        # Prompt/template/classification dropdowns
-        self.prompt_template_dd.change(  # pylint: disable=no-member
-            fn=self._handle_prompt_template_changed,
-            inputs=[self.content_radio, self.prompt_template_dd],
-            outputs=[],
+        # ---------------------------------------------------------
+        def _handle_generate_summary_clicked(
+            selected_label: str,
+            selected_model_label: str,
+        ):
+            """
+            Called when user clicks 'Generate Summary'.
+
+            - selected_label: current content_list_radio value
+            - selected_model_label: current summary_model_dd value
+            """
+
+            # 1) Resolve content (platform_enum, content_id)
+            entry = content_index.get(selected_label)
+            if entry is None:
+                gr.Warning("No content selected.")
+                return (
+                    gr.update(),  # summary_tb
+                    gr.update(),  # summary_source_tb
+                )
+
+            platform_enum, content_id = entry
+
+            # 2) Resolve model (provider, model_name)
+            model_entry = summary_model_index.get(selected_model_label)
+            if model_entry is None:
+                gr.Warning("No summary model selected.")
+                return (
+                    gr.update(),
+                    gr.update(),
+                )
+
+            provider, model_name = model_entry
+
+            # 3) Ask controller to generate summary text
+            try:
+                new_summary_text = on_generate_summary_clicked(
+                    platform_enum,
+                    content_id,
+                    provider,
+                    model_name,
+                )
+            except Exception as exc:  # optional: debug safety
+                print("Error in on_generate_summary_clicked:", exc)
+                gr.Warning("Failed to generate summary.")
+                return (
+                    gr.update(),  # leave current summary as is
+                    gr.update(),  # leave source as is
+                )
+
+            # 4) Update summary textbox and source
+            # We don’t have a fresh ViewModel here (controller returns str),
+            # so we choose a reasonable source tag ("ai").
+            return (
+                gr.update(value=new_summary_text or ""),
+                gr.update(value="ai"),  # or "AI model", up to you
+            )
+
+        generate_summary_btn.click(
+            fn=_handle_generate_summary_clicked,
+            inputs=[
+                content_list_radio,  # which content
+                summary_model_dd,  # which model
+            ],
+            outputs=[
+                summary_tb,
+                summary_source_tb,
+            ],
         )
 
-        self.class_group_dd.change(  # pylint: disable=no-member
-            fn=self._handle_classification_group_changed,
-            inputs=[self.content_radio, self.class_group_dd],
-            outputs=[],
+        # ---------------------------------------------------------
+        def _handle_summary_save_clicked(
+            selected_label: str,
+            new_summary_text: str,
+        ):
+            """
+            Called when user clicks 'Save Summary'.
+
+            - selected_label: current content_list_radio value
+            - new_summary_text: current text in summary_tb
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                gr.Warning("No content selected to save summary for.")
+                return gr.update()  # no change to summary_source_tb
+
+            platform_enum, content_id = entry
+
+            # Let controller persist the new summary text
+            on_summary_save_clicked(platform_enum, content_id, new_summary_text)
+
+            # Mark the source as 'manual' (or whatever label you want)
+            return gr.update(value="manual")
+
+        save_summary_btn.click(
+            fn=_handle_summary_save_clicked,
+            inputs=[
+                content_list_radio,  # which content item
+                summary_tb,  # the edited text
+            ],
+            outputs=[
+                summary_source_tb,  # only update the source label
+            ],
         )
 
-        # Run analysis
-        run_btn.click(  # pylint: disable=no-member
-            fn=self._handle_run_analysis_clicked,
-            inputs=[self.run_models_cb],
-            outputs=[],
+        # ---------------------------------------------------------
+        def _handle_summary_cancel_clicked(selected_label: str):
+            """
+            Restore the last saved summary by re-fetching the detail VM.
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                gr.Warning("No content selected.")
+                return (
+                    gr.update(),  # summary_tb
+                    gr.update(),  # summary_source_tb
+                )
+
+            platform_enum, content_id = entry
+
+            # Re-fetch real state from backend
+            selected_vm = on_content_clicked(platform_enum, content_id)
+            if selected_vm is None:
+                return (
+                    gr.update(),  # summary_tb
+                    gr.update(),  # summary_source_tb
+                )
+
+            summary_text_val = selected_vm.summary_text or ""
+            summary_source_val = selected_vm.summary_source or "N/A"
+
+            return (
+                gr.update(value=summary_text_val),
+                gr.update(value=summary_source_val),
+            )
+
+        cancel_summary_btn.click(
+            fn=_handle_summary_cancel_clicked,
+            inputs=[content_list_radio],
+            outputs=[
+                summary_tb,
+                summary_source_tb,
+            ],
         )
 
-    # ================================================================
-    # INTERNAL HELPERS
-    # ================================================================
-    def _content_choices_from_list(
-        self,
-        contents: List[ContentItemListViewModel],
-    ) -> List[str]:
-        """
-        Build labels used in the Radio from ContentItemListViewModel list.
+        # ---------------------------------------------------------
+        # - prompt_template_dd.change(...)
+        # - class_group_dd.change(...)
 
-        We encode platform + content_id in the label so handlers can decode it.
-        Format: "{platform}|{content_id}|{title}"
-        """
-        choices: List[str] = []
-        for c in contents:
-            # platform is likely an enum; use its value or str(c.platform)
-            plat_str = getattr(c.platform, "value", str(c.platform))
-            label = f"{plat_str}|{c.content_id}|{c.title}"
-            choices.append(label)
-        return choices
+        # - sort_by_dd.change(...)
+        # - sort_dir_dd.change(...)
+        # - limit_tb.change(...)
 
-    def _decode_content_label(self, label: str) -> Optional[Tuple[str, str]]:
-        """
-        Reverse of _content_choices_from_list:
-        given "platform|content_id|title" → (platform_str, content_id).
-        """
-        if not label:
-            return None
-        parts = label.split("|", 2)
-        if len(parts) < 2:
-            return None
-        platform_str, content_id = parts[0], parts[1]
-        return platform_str, content_id
+        # - run_analysis_btn.click(...)
 
-    # ================================================================
-    # CALLBACK WRAPPERS (_handle_* → controller)
-    # ================================================================
-    def _handle_parse_links_clicked(self, raw_text: str):
-        """
-        Forward 'parse links' event to controller.
+        # ================================================================
+        # HELPER
+        # ================================================================
 
-        TODO: map AnalysisViewModel → gr.update(...) for list/detail/progress.
-        """
-        _vm: AnalysisViewModel = self.analysis_controller.on_parse_links_clicked(raw_text)
-        # For now we ignore the VM and rely on external re-render.
-        # Later: return a tuple of gr.update(...) for bound components.
-        return
+        def _status_badge(status: str) -> str:
+            # very simple emoji mapping; later you can style with HTML
+            if status == "DONE":
+                return "✅ DONE"
+            if status in ("RUNNING", "FETCHING", "EXPORTING"):
+                return "⏳ " + status
+            if status == "FAILED":
+                return "❌ FAILED"
+            return status or "UNKNOWN"
 
-    def _handle_content_clicked(self, selection_label: str):
-        """
-        Forward content selection to controller.
+        def _analysis_runs_to_markdown(vm: AnalysisViewModel) -> str:
+            runs = vm.analysis_runs or []
+            if not runs:
+                return "_No analyses yet._"
 
-        TODO: use returned ContentItemDetailViewModel to update detail panel.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        # Controller expects PlatformEnum, but we keep platform_str here.
-        # It can convert inside.
-        self.analysis_controller.on_content_clicked(platform_str, content_id)
-        return
+            # Header row
+            lines = [
+                "| Platform | Title | Comments | Models | Export |",
+                "|----------|-------|----------|--------|--------|",
+            ]
 
-    def _handle_remove_content_clicked(self, selection_label: str):
-        """
-        Forward 'remove content' event to controller.
+            for run in runs:
+                # Comment status
+                comments = _status_badge(run.comment_fetch_status)
 
-        TODO: use returned AnalysisViewModel to update list + detail.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        _vm: AnalysisViewModel = self.analysis_controller.on_remove_content_clicked(
-            platform_str, content_id
-        )
-        return
+                # Models status combined
+                if run.models:
+                    model_bits = []
+                    for m in run.models:
+                        label = f"{m.provider}:{m.model_name}"
+                        model_bits.append(f"`{label}` { _status_badge(m.status) }")
+                    models_cell = "<br>".join(
+                        model_bits
+                    )  # HTML line breaks inside markdown
+                else:
+                    models_cell = "_no models_"
 
-    def _handle_generate_summary_clicked(
-        self,
-        selection_label: str,
-        model_label: str,
-    ) -> str:
-        """
-        Forward 'generate summary' event to controller.
+                export_cell = _status_badge(run.export_status)
 
-        Returns the new summary text for the summary textbox.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return ""
-        platform_str, content_id = decoded
+                # Escaping title crudely
+                title = run.title.replace("|", "\\|")
 
-        # TODO: map model_label back to (provider, model_name).
-        # For now we just pass the label as model_name and a dummy provider.
-        provider = "openai"
-        model_name = model_label
+                lines.append(
+                    f"| {run.platform} | {title} | {comments} | {models_cell} | {export_cell} |"
+                )
 
-        summary: str = self.analysis_controller.on_generate_summary_clicked(
-            platform_str,
-            content_id,
-            provider,
-            model_name,
-        )
-        return summary
-
-    def _handle_summary_save_clicked(
-        self,
-        selection_label: str,
-        summary_text: str,
-    ):
-        """
-        Forward 'save summary' event to controller.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        self.analysis_controller.on_summary_save_clicked(
-            platform_str,
-            content_id,
-            summary_text,
-        )
-        return
-
-    def _handle_limit_changed(
-        self,
-        selection_label: str,
-        limit: int,
-    ):
-        """
-        Forward limit changes to controller.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        self.analysis_controller.on_limit_changed(
-            platform_str,
-            content_id,
-            int(limit),
-        )
-        return
-
-    def _handle_prompt_template_changed(
-        self,
-        selection_label: str,
-        template_name: str,
-    ):
-        """
-        Forward prompt template selection to controller.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        self.analysis_controller.on_prompt_template_changed(
-            platform_str,
-            content_id,
-            template_name,
-        )
-        return
-
-    def _handle_classification_group_changed(
-        self,
-        selection_label: str,
-        group_id: str,
-    ):
-        """
-        Forward classification group selection to controller.
-        """
-        decoded = self._decode_content_label(selection_label)
-        if not decoded:
-            return
-        platform_str, content_id = decoded
-        self.analysis_controller.on_classification_group_changed(
-            platform_str,
-            content_id,
-            group_id,
-        )
-        return
-
-    def _handle_run_analysis_clicked(
-        self,
-        selected_model_labels: List[str],
-    ):
-        """
-        Forward 'run analysis' event to controller.
-
-        TODO: map model labels → List[(provider, model_name)].
-        """
-        # Here we just pass dummy provider with model label as model_name.
-        selected_models: List[Tuple[str, str]] = [
-            ("openai", label) for label in (selected_model_labels or [])
-        ]
-        self.analysis_controller.on_run_analysis_clicked(selected_models)
-        return
-
-    def _handle_analysis_status_polled(self):
-        """
-        Periodic polling: ask controller for latest AnalysisViewModel.
-
-        TODO: map vm.analysis_runs into progress_md text and other UI elements.
-        """
-        _vm: AnalysisViewModel = self.analysis_controller.on_analysis_status_polled()
-        # For now, ignore and rely on external re-render.
-        return
+            # Join to a markdown string
+            return "\n".join(lines)
