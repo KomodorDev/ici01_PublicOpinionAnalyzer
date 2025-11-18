@@ -1,5 +1,5 @@
 import threading
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 from services import (
     ContentService,
@@ -429,7 +429,7 @@ class AnalysisController:
 
         # 2) Load classification group via the service
         classification_group = self.classification_service.load_classification_group(
-            name=group_id,
+            group_name=group_id,
         )
 
         # 3) Assign to the domain model
@@ -493,52 +493,70 @@ class AnalysisController:
     def on_run_analysis_clicked(
         self,
         selected_models: List[Tuple[str, str]],
-    ) -> None:
+    ) -> Dict[str, Any]:
         """
-        Attach the selected LLM models to all ContentAnalysis objects
-        in preparation for running an analysis.
-
-        Args:
-            selected_models: List of (provider, model_name) tuples
-                             e.g. [("openai", "gpt-4o-mini"),
-                                   ("google", "gemini-1.5-flash")]
+        Start analysis if configuration is valid.
+        Returns:
+            {"ok": bool, "message": str}
         """
 
-        # 1) Resolve LLM clients for all selected models
-        llm_clients = []
-        for provider, model_name in selected_models:
-            client = self.model_service.get_llm_client(
-                provider=provider,
-                model_name=model_name,
-            )
-            llm_clients.append(client)
-
-        # 2) For every content item, attach clients and create ModelRunProgress entries
+        # Do nothing if there are no content items
         analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
         if not analyses:
-            return
+            return {"ok": False, "message": "No content items to analyze."}
+        
+        # title -> list of issue strings
+        issues_by_title: dict[str, list[str]] = {}
 
-
+        # 1) Per-content validation
         for ca in analyses:
-            # Attach the list of LLM clients (copy so they don't alias)
-            ca.models = llm_clients[:]
+            title = ca.content.title if getattr(ca, "content", None) else ca.content_id
+            issues_for_this: list[str] = []
 
-            # How many comments this content will be analyzed with
-            total = len(ca.comments)
+            # Adjust attribute names to your real model
+            if not ca.prompt_template:
+                issues_for_this.append("no prompt template selected")
 
-            # Fresh per-model progress list for THIS content item
-            ca.model_run_progress = []
-            for provider, model_name in selected_models:
-                ca.model_run_progress.append(
-                    ModelRunProgress(
-                        provider=provider,
-                        model_name=model_name,
-                        status=TaskStatusEnum.PENDING,
-                        progress=0.0 if total > 0 else 1.0,
-                        current_comment=0,
-                        total_comments=total,
-                    )
-                )
+            if not ca.classification_group:
+                issues_for_this.append("no classification group selected")
+
+            summary = (ca.content.summary or "").strip()
+            if not summary:
+                issues_for_this.append("summary is empty")
+
+            if issues_for_this:
+                issues_by_title[title] = issues_for_this
+
+        # 2) Global validation: at least one model selected
+        global_issues: list[str] = []
+        if not selected_models:
+            global_issues.append("Please select at least one model for analysis.")
+
+        # 3) If any issues exist, build a nice markdown message
+        if issues_by_title or global_issues:
+            lines: list[str] = []
+            lines.append(
+                "Cannot start analysis. The following items are incomplete:\n"
+            )
+
+            # Per-content issues
+            for title, issues in issues_by_title.items():
+                lines.append(f"- **{title}**")
+                for issue in issues:
+                    lines.append(f"  - {issue}")
+                lines.append("")  # blank line between items
+
+            # Global issues (model selection, etc.)
+            if global_issues:
+                lines.append("- **Global configuration**")
+                for issue in global_issues:
+                    lines.append(f"  - {issue}")
+                lines.append("")
+
+            lines.append("Please fix these before running analysis.")
+
+            message = "\n".join(lines)
+            return {"ok": False, "message": message}
 
         # Optional safety: don't start a second run while one is still running
         if self._analysis_thread is not None and self._analysis_thread.is_alive():
@@ -552,6 +570,12 @@ class AnalysisController:
         )
         self._analysis_thread = thread
         thread.start()
+
+        return {
+            "ok": True,
+            "message": f"Analysis started for {len(analyses)} item(s) "
+                    f"with {len(selected_models)} model(s).",
+        }
 
     # ---------------------------------------------------------
     def _run_analysis_background(self, analyses: List[ContentAnalysis]) -> None:
