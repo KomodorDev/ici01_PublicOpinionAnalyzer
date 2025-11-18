@@ -45,7 +45,7 @@ class ContentAnalysis:
 
     # Per-content analysis config (non-defaults first)
     sort_by: SortByEnum = SortByEnum.DEFAULT
-    sort_dir: SortDirEnum = SortDirEnum.DSC
+    sort_dir: SortDirEnum = SortDirEnum.DEFAULT
     limit: int  = None  # e.g. 20 / 50 / 100 / 1000
 
     # Optional configuration / runtime data
