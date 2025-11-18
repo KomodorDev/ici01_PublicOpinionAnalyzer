@@ -25,9 +25,9 @@ class ContentAnalysisRunViewModel:
     # -----------------------------
     # Step 1: Fetching comments
     # -----------------------------
-    fetch_status: TaskStatusEnum              # PENDING | RUNNING | DONE | ERROR
-    fetch_progress: float                     # 0.0–1.0
-    fetch_status_text: str                    # last status line (yt-dlp, etc.)
+    fetch_status: TaskStatusEnum = TaskStatusEnum.PENDING           # PENDING | RUNNING | DONE | ERROR
+    fetch_progress: float = 0.0                     # 0.0–1.0
+    fetch_status_text: str = ""                # last status line (yt-dlp, etc.)
 
     # -----------------------------
     # Per-model progress
@@ -38,3 +38,4 @@ class ContentAnalysisRunViewModel:
     # Exporting results
     # -----------------------------
     export_status: TaskStatusEnum = TaskStatusEnum.PENDING
+    export_status_text: str = ""
