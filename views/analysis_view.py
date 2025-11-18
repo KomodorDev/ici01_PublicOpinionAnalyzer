@@ -171,6 +171,28 @@ class AnalysisView:
         # maps summary model display label -> (provider, model_name)
         summary_model_index: dict[str, tuple[str, str]] = {}
 
+        # maps analysis model display label -> (provider, model_name)
+        analysis_model_index: dict[str, tuple[str, str]] = {}
+
+        PROMPT_SENTINEL = "— Select prompt template —"
+        GROUP_SENTINEL = "— Select classification group —"
+
+        # ----------------------------------------------------------------
+        # INITIAL ANALYSIS MODEL DROPDOWN CHOICES
+        # ----------------------------------------------------------------
+        analysis_model_labels: list[str] = []
+        analysis_model_index.clear()
+
+        for mdl in view_model.available_llm_models or []:
+            provider = getattr(mdl, "provider", "?")
+            model_name = getattr(mdl, "model_name", "?")
+            display_name = getattr(mdl, "display_name", None)
+            if not display_name:
+                display_name = f"{provider}:{model_name}"
+
+            analysis_model_labels.append(display_name)
+            analysis_model_index[display_name] = (provider, model_name)
+
         # ================================================================
         # LAYOUT
         # ================================================================
@@ -349,10 +371,12 @@ class AnalysisView:
             gr.Markdown("### Model Selection")
 
             # Placeholder for selected models; real UI wired later
-            selected_models_info_tb = gr.Textbox(
-                label="Selected models (debug / placeholder)",
-                value="No models selected yet.",
-                interactive=False,
+            analysis_models_dd = gr.Dropdown(
+                label="Models for analysis",
+                choices=analysis_model_labels,
+                value=[],                # start with nothing selected
+                multiselect=True,
+                interactive=True,
             )
 
             # ----------------------------------------------------------------
@@ -368,12 +392,19 @@ class AnalysisView:
                 variant="primary",
             )
 
+            # Error panel (starts empty / invisible to user)
+            analysis_error_md = gr.Markdown(value="")
+    
             # NEW: Progress overview (Markdown table)
             analysis_progress_md = gr.Markdown(
-                value="_No running analyses yet._",
+                value="",
                 visible=True,
             )
 
+            analysis_timer = gr.Timer(
+                value=1.0,    # interval in seconds
+                active=False  # start inactive; we’ll turn it on after “Run Analysis”
+            )
         # ================================================================
         # WIRING
         # ================================================================
@@ -460,15 +491,17 @@ class AnalysisView:
 
                 # Prompt templates
                 pt_choices = selected_vm.available_prompt_templates or []
+                pt_choices_with_empty = [PROMPT_SENTINEL] + pt_choices
                 pt_value = selected_vm.selected_prompt_template_name
                 if pt_value not in pt_choices:
-                    pt_value = pt_choices[0] if pt_choices else None
+                    pt_value = PROMPT_SENTINEL
 
                 # Classification groups
                 cg_choices = selected_vm.available_classification_groups or []
+                cg_choices_with_empty = [GROUP_SENTINEL] + cg_choices
                 cg_value = selected_vm.selected_classification_group_name
                 if cg_value not in cg_choices:
-                    cg_value = cg_choices[0] if cg_choices else None
+                    cg_value = GROUP_SENTINEL
 
                 # Sort options
                 sort_by_choices = [
@@ -524,8 +557,8 @@ class AnalysisView:
                     gr.update(value=summary_text_val),  # summary_tb
                     gr.update(value=summary_source_val),  # summary_source_tb
                     gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                    gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
-                    gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                    gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
+                    gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
                     gr.update(
                         choices=sort_by_choices, value=sort_by_value
                     ),  # sort_by_dd
@@ -668,15 +701,17 @@ class AnalysisView:
 
             # Prompt templates
             pt_choices = selected_vm.available_prompt_templates or []
+            pt_choices_with_empty = [PROMPT_SENTINEL] + pt_choices
             pt_value = selected_vm.selected_prompt_template_name
             if pt_value not in pt_choices:
-                pt_value = pt_choices[0] if pt_choices else None
+                pt_value = PROMPT_SENTINEL
 
             # Classification groups
             cg_choices = selected_vm.available_classification_groups or []
+            cg_choices_with_empty = [GROUP_SENTINEL] + cg_choices
             cg_value = selected_vm.selected_classification_group_name
             if cg_value not in cg_choices:
-                cg_value = cg_choices[0] if cg_choices else None
+                cg_value = GROUP_SENTINEL
 
             # Sort options
             sort_by_choices = [
@@ -723,8 +758,8 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
+                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -859,15 +894,19 @@ class AnalysisView:
 
             # Prompt templates
             pt_choices = selected_vm.available_prompt_templates or []
+            pt_choices_with_empty = [PROMPT_SENTINEL] + pt_choices
             pt_value = selected_vm.selected_prompt_template_name
             if pt_value not in pt_choices:
-                pt_value = pt_choices[0] if pt_choices else None
+                pt_value = PROMPT_SENTINEL
+
 
             # Classification groups
             cg_choices = selected_vm.available_classification_groups or []
+            cg_choices_with_empty = [GROUP_SENTINEL] + cg_choices
+
             cg_value = selected_vm.selected_classification_group_name
             if cg_value not in cg_choices:
-                cg_value = cg_choices[0] if cg_choices else None
+                cg_value = GROUP_SENTINEL
 
             # Sort options
             sort_by_choices = [
@@ -915,8 +954,8 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices, value=cg_value),  # class_group_dd
+                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
+                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -1092,64 +1131,211 @@ class AnalysisView:
         )
 
         # ---------------------------------------------------------
-        # - prompt_template_dd.change(...)
-        # - class_group_dd.change(...)
+        def _handle_prompt_template_changed(
+            selected_label: str,
+            selected_tpl: str,
+        ):
+            """
+            Called when user changes the Prompt Template dropdown.
+            - selected_label: current content_list_radio value
+            - selected_tpl: new value of prompt_template_dd
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                # No content selected → nothing to update in backend
+                gr.Warning("No content selected for prompt template change.")
+                return
 
+            platform_enum, content_id = entry
+
+            # If user chose the sentinel "no selection" option, we *do not*
+            # update the backend (ContentAnalysis stays at None).
+            if not selected_tpl or selected_tpl == PROMPT_SENTINEL:
+                # If you later change the controller to accept Optional[str],
+                # you could call: on_prompt_template_changed(platform_enum, content_id, None)
+                return
+
+            # Real template name selected → persist in backend
+            on_prompt_template_changed(platform_enum, content_id, selected_tpl)
+            # No UI changes needed here; dropdown already shows the correct value.
+            return
+
+        prompt_template_dd.change(
+            fn=_handle_prompt_template_changed,
+            inputs=[content_list_radio, prompt_template_dd],
+            outputs=[],
+        )
+
+        # ---------------------------------------------------------
+        def _handle_classification_group_changed(
+            selected_label: str,
+            selected_group: str,
+        ):
+            """
+            Called when user changes the Classification Group dropdown.
+            - selected_label: current content_list_radio value
+            - selected_group: new value of class_group_dd
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                gr.Warning("No content selected for classification group change.")
+                return
+
+            platform_enum, content_id = entry
+
+            # User picked the sentinel -> treat as "no selection", don't update backend
+            if not selected_group or selected_group == GROUP_SENTINEL:
+                # If you later change controller to accept Optional[str], you could:
+                # on_classification_group_changed(platform_enum, content_id, None)
+                return
+
+            # Real group selected -> persist in backend
+            on_classification_group_changed(platform_enum, content_id, selected_group)
+
+            return
+
+        class_group_dd.change(
+            fn=_handle_classification_group_changed,
+            inputs=[content_list_radio, class_group_dd],
+            outputs=[],
+        )
+
+        # ---------------------------------------------------------
         # - sort_by_dd.change(...)
-        # - sort_dir_dd.change(...)
-        # - limit_tb.change(...)
 
-        # - run_analysis_btn.click(...)
+        # ---------------------------------------------------------
+        # - sort_dir_dd.change(...)
+
+        # ---------------------------------------------------------
+        def _handle_limit_changed(
+            selected_label: str,
+            limit_text: str,
+        ):
+            """
+            Called when user edits the 'limit' textbox.
+            - selected_label: which content item is active
+            - limit_text: string typed into the limit_tb
+            """
+            entry = content_index.get(selected_label)
+            if entry is None:
+                return  # no content selected
+
+            platform_enum, content_id = entry
+
+            limit_text = (limit_text or "").strip()
+
+            # Case 1: empty field → treat as None
+            if limit_text == "":
+                on_limit_changed(platform_enum, content_id, None)
+                return
+
+            # Case 2: numeric input
+            try:
+                new_limit = int(limit_text)
+                if new_limit < 0:
+                    raise ValueError("Limit must be >= 0")
+            except Exception:
+                gr.Warning("Limit must be a non-negative integer or empty.")
+                return
+
+            # Case 3: valid input
+            on_limit_changed(platform_enum, content_id, new_limit)
+            return
+
+        limit_tb.change(
+            fn=_handle_limit_changed,
+            inputs=[content_list_radio, limit_tb],
+            outputs=[],
+        )
+
+        # ---------------------------------------------------------
+        def _handle_run_analysis(selected_model_labels: list[str]):
+            """
+            selected_model_labels: list of labels from analysis_models_dd
+            """
+
+            selected_models: list[tuple[str, str]] = []
+            for label in selected_model_labels:
+                entry = analysis_model_index.get(label)
+                if entry is None:
+                    continue
+                selected_models.append(entry)  # (provider, model_name)
+
+            # Ask controller to run analysis WITH validation
+            status = on_run_analysis_clicked(selected_models)
+            ok = bool(status.get("ok"))
+            message = status.get("message", "")
+
+            if not ok:
+                # Build nice markdown error
+                if message:
+                    md = f"\n{message}\n"
+                else:
+                    md = "\nCannot start analysis\n\nUnknown validation error."
+                # Also show a toast if you want
+                gr.Warning("Cannot start analysis. See details below.")
+                return md, gr.update(active=False)
+
+            # Success path -> clear error markdown
+            gr.Success(message or "Analysis started.")
+            return "", gr.update(active=True)
+
+
+        run_analysis_btn.click(
+            fn=_handle_run_analysis,
+            inputs=[analysis_models_dd],
+            outputs=[analysis_error_md, analysis_timer]
+        )
+
+        # ---------------------------------------------------------
+        def _poll_analysis_status():
+            """
+            Called by the timer every tick.
+            Fetches latest AnalysisViewModel and turns it into Markdown.
+            """
+            vm = on_analysis_status_polled()
+            return _analysis_runs_to_markdown(vm)
+
+
+        analysis_timer.tick(
+            fn=_poll_analysis_status,
+            inputs=None,
+            outputs=analysis_progress_md,
+        )
 
         # ================================================================
         # HELPER
         # ================================================================
-
-        def _status_badge(status: str) -> str:
-            # very simple emoji mapping; later you can style with HTML
-            if status == "DONE":
-                return "✅ DONE"
-            if status in ("RUNNING", "FETCHING", "EXPORTING"):
-                return "⏳ " + status
-            if status == "FAILED":
-                return "❌ FAILED"
-            return status or "UNKNOWN"
-
         def _analysis_runs_to_markdown(vm: AnalysisViewModel) -> str:
             runs = vm.analysis_runs or []
             if not runs:
                 return "_No analyses yet._"
 
-            # Header row
             lines = [
                 "| Platform | Title | Comments | Models | Export |",
                 "|----------|-------|----------|--------|--------|",
             ]
 
             for run in runs:
-                # Comment status
-                comments = _status_badge(run.comment_fetch_status)
+                # Convert statuses directly to string
+                comments = str(run.fetch_status)
+                export_cell = str(run.export_status)
 
-                # Models status combined
-                if run.models:
+                if run.model_runs:
                     model_bits = []
-                    for m in run.models:
+                    for m in run.model_runs:
+                        status_str = str(m.status)
                         label = f"{m.provider}:{m.model_name}"
-                        model_bits.append(f"`{label}` { _status_badge(m.status) }")
-                    models_cell = "<br>".join(
-                        model_bits
-                    )  # HTML line breaks inside markdown
+                        model_bits.append(f"`{label}` {status_str}")
+                    models_cell = "<br>".join(model_bits)
                 else:
                     models_cell = "_no models_"
 
-                export_cell = _status_badge(run.export_status)
-
-                # Escaping title crudely
                 title = run.title.replace("|", "\\|")
 
                 lines.append(
                     f"| {run.platform} | {title} | {comments} | {models_cell} | {export_cell} |"
                 )
 
-            # Join to a markdown string
             return "\n".join(lines)
+
