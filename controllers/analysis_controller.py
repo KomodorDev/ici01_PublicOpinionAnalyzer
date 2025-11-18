@@ -385,6 +385,60 @@ class AnalysisController:
         ca.content.summary_source = "manual"
 
     # --- Per-content settings ---
+
+    # ---------------------------------------------------------
+    def on_prompt_template_changed(
+        self,
+        platform: PlatformEnum,
+        content_id: str,
+        template_name: str,
+    ) -> None:
+        """Update the selected prompt template for this content."""
+
+        # 1) Retrieve the ContentAnalysis (guaranteed to exist)
+        ca = self.content_analysis_manager.get(
+            platform=platform,
+            content_id=content_id,
+        )
+
+        # 2) Load the PromptTemplate using the correct service method
+        prompt_template = self.prompt_template_service.load_prompt_template(
+            platform=platform,
+            name=template_name,
+        )
+
+        # 3) Assign to the domain model
+        ca.prompt_template = prompt_template
+
+        # 4) Done (no return value needed)
+
+    # ---------------------------------------------------------
+    def on_classification_group_changed(
+        self,
+        platform: PlatformEnum,
+        content_id: str,
+        group_id: str,
+    ) -> None:
+        """Update the selected classification group for this content."""
+
+        # 1) Retrieve the ContentAnalysis (guaranteed to exist)
+        ca = self.content_analysis_manager.get(
+            platform=platform,
+            content_id=content_id,
+        )
+
+        # 2) Load classification group via the service
+        classification_group = self.classification_service.load_classification_group(
+            name=group_id,
+        )
+
+        # 3) Assign to the domain model
+        ca.classification_group = classification_group
+
+        # 4) Done
+        # If your manager needs explicit persistence:
+        # self.content_analysis_manager.update(ca)
+
     # ---------------------------------------------------------
     def on_sort_changed(
         self,
@@ -431,59 +485,6 @@ class AnalysisController:
         # If ContentAnalysisManager requires explicit persistence:
         # self.content_analysis_manager.update(ca)
 
-    # ---------------------------------------------------------
-    def on_prompt_template_changed(
-        self,
-        platform: PlatformEnum,
-        content_id: str,
-        template_name: str,
-    ) -> None:
-        """Update the selected prompt template for this content."""
-
-        # 1) Retrieve the ContentAnalysis (guaranteed to exist)
-        ca = self.content_analysis_manager.get(
-            platform=platform,
-            content_id=content_id,
-        )
-
-        # 2) Load the PromptTemplate using the correct service method
-        prompt_template = self.prompt_template_service.load_prompt_template(
-            platform=platform,
-            name=template_name,
-        )
-
-        # 3) Assign to the domain model
-        ca.prompt_template = prompt_template
-
-        # 4) Done (no return value needed)
-
-    # ---------------------------------------------------------
-    def on_classification_group_changed(
-        self,
-        platform: PlatformEnum,
-        content_id: str,
-        group_id: str,
-    ) -> None:
-        """Update the selected classification group for this content."""
-
-        # 1) Retrieve the ContentAnalysis (guaranteed to exist)
-        ca = self.content_analysis_manager.get(
-            platform=platform,
-            content_id=content_id,
-        )
-
-        # 2) Load classification group via the service
-        classification_group = self.classification_service.load_classification_group(
-            platform=platform,
-            name=group_id,
-        )
-
-        # 3) Assign to the domain model
-        ca.classification_group = classification_group
-
-        # 4) Done
-        # If your manager needs explicit persistence:
-        # self.content_analysis_manager.update(ca)
 
     # ================================================================
     # Run Analysis clicked
