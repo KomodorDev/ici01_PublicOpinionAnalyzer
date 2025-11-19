@@ -1,5 +1,5 @@
 """
-view models package for analyis view
+view models package for analysis view
 -------------------
 
 """
