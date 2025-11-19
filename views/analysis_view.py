@@ -374,7 +374,7 @@ class AnalysisView:
             analysis_models_dd = gr.Dropdown(
                 label="Models for analysis",
                 choices=analysis_model_labels,
-                value=[],                # start with nothing selected
+                value=[],  # start with nothing selected
                 multiselect=True,
                 interactive=True,
             )
@@ -394,7 +394,7 @@ class AnalysisView:
 
             # Error panel (starts empty / invisible to user)
             analysis_error_md = gr.Markdown(value="")
-    
+
             # NEW: Progress overview (Markdown table)
             analysis_progress_md = gr.Markdown(
                 value="",
@@ -402,8 +402,8 @@ class AnalysisView:
             )
 
             analysis_timer = gr.Timer(
-                value=1.0,    # interval in seconds
-                active=False  # start inactive; we’ll turn it on after “Run Analysis”
+                value=1.0,  # interval in seconds
+                active=False,  # start inactive; we’ll turn it on after “Run Analysis”
             )
         # ================================================================
         # WIRING
@@ -557,8 +557,12 @@ class AnalysisView:
                     gr.update(value=summary_text_val),  # summary_tb
                     gr.update(value=summary_source_val),  # summary_source_tb
                     gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                    gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                    gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                    gr.update(
+                        choices=pt_choices_with_empty, value=pt_value
+                    ),  # prompt_template_dd
+                    gr.update(
+                        choices=cg_choices_with_empty, value=cg_value
+                    ),  # class_group_dd
                     gr.update(
                         choices=sort_by_choices, value=sort_by_value
                     ),  # sort_by_dd
@@ -758,8 +762,12 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                gr.update(
+                    choices=pt_choices_with_empty, value=pt_value
+                ),  # prompt_template_dd
+                gr.update(
+                    choices=cg_choices_with_empty, value=cg_value
+                ),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -899,7 +907,6 @@ class AnalysisView:
             if pt_value not in pt_choices:
                 pt_value = PROMPT_SENTINEL
 
-
             # Classification groups
             cg_choices = selected_vm.available_classification_groups or []
             cg_choices_with_empty = [GROUP_SENTINEL] + cg_choices
@@ -954,8 +961,12 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                gr.update(
+                    choices=pt_choices_with_empty, value=pt_value
+                ),  # prompt_template_dd
+                gr.update(
+                    choices=cg_choices_with_empty, value=cg_value
+                ),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -1280,11 +1291,10 @@ class AnalysisView:
             gr.Success(message or "Analysis started.")
             return "", gr.update(active=True)
 
-
         run_analysis_btn.click(
             fn=_handle_run_analysis,
             inputs=[analysis_models_dd],
-            outputs=[analysis_error_md, analysis_timer]
+            outputs=[analysis_error_md, analysis_timer],
         )
 
         # ---------------------------------------------------------
@@ -1295,7 +1305,6 @@ class AnalysisView:
             """
             vm = on_analysis_status_polled()
             return _analysis_runs_to_markdown(vm)
-
 
         analysis_timer.tick(
             fn=_poll_analysis_status,
@@ -1312,29 +1321,39 @@ class AnalysisView:
                 return "_No analyses yet._"
 
             lines = [
-                "| Platform | Title | Comments | Models | Export |",
+                "| Platform | Title |  Fetch   | Models | Export |",
                 "|----------|-------|----------|--------|--------|",
             ]
 
             for run in runs:
-                # Convert statuses directly to string
-                comments = str(run.fetch_status)
+                # Direct string conversion of enum values
+                fetch_cell = str(run.fetch_status)
                 export_cell = str(run.export_status)
 
+                # Build models cell
                 if run.model_runs:
                     model_bits = []
                     for m in run.model_runs:
-                        status_str = str(m.status)
                         label = f"{m.provider}:{m.model_name}"
-                        model_bits.append(f"`{label}` {status_str}")
+                        status_str = str(m.status)
+
+                        if m.error:
+                            model_bits.append(
+                                f"`{label}` {status_str}<br>"
+                                f"<sub>⚠️ {m.error}</sub>"
+                            )
+                        else:
+                            model_bits.append(f"`{label}` {status_str}")
+
                     models_cell = "<br>".join(model_bits)
                 else:
                     models_cell = "_no models_"
 
+                # Escape pipes in title
                 title = run.title.replace("|", "\\|")
 
                 lines.append(
-                    f"| {run.platform} | {title} | {comments} | {models_cell} | {export_cell} |"
+                    f"| {run.platform} | {title} | {fetch_cell} | {models_cell} | {export_cell} |"
                 )
 
             return "\n".join(lines)
