@@ -15,7 +15,7 @@ from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
 
 from mappers import AnalysisMapper
 
-from models.domain import LLMModelInfo, ContentAnalysis, ModelRunProgress
+from models.domain import LLMModelInfo, ContentAnalysis
 from models.view_models.analysis import (
     AnalysisViewModel,
     LLMModelInfoViewModel,
