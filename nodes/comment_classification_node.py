@@ -14,6 +14,7 @@ Usage:
 import time
 import json
 from typing import Any
+from xmlrpc import client
 
 from enums.platform_enum import PlatformEnum
 from models.domain import ClassificationGroup, ContentAnalysis, ContentItem, Label
@@ -23,15 +24,12 @@ from services.prompt_runtime_service import PromptRuntimeService
 
 def create_comment_classification_node(
     client: Any,
-    platform: PlatformEnum,
-    prompt_template_name: str,
-    classification_group_name: str,
-    classification_group: ClassificationGroup,
-    content_item: ContentItem,
+    prompt_runtime_service: PromptRuntimeService,
     classification_service: ClassificationService,
     rate_limiter=None,
     max_retries: int = 3,
     qps: int = 4,
+
 ):
     """
     Creates a node for classifying comments with a specific LLM and config.
@@ -48,7 +46,9 @@ def create_comment_classification_node(
 
     def process(content_analysis: ContentAnalysis):
         comments = content_analysis.comments
-        model_name = getattr(client, "model", "UnknownModel")
+        classification_group = content_analysis.classification_group.classifications 
+
+        model_name = client.model_name
         print(f"\n🤖 [{model_name}] Starting processing of {len(comments)} comments...")
         start_time = time.time()
 
@@ -58,95 +58,126 @@ def create_comment_classification_node(
             success = False
             label_map = {}
 
-            # Retry logic for each comment/classification set
+            # ============================================================
+            # 1) CALL MODEL WITH RETRIES (build prompts + invoke + parse)
+            # ============================================================
             while attempts < max_retries and not success:
                 try:
-                    # (1) Throttle model calls if needed
+                    # 1.1) Throttle if we have a rate limiter
                     if rate_limiter:
                         rate_limiter.acquire()
 
-                    # (2) Prepare LLM/system/user prompt for this comment
-                    sys_prompt, usr_prompt = prompt_service.create_prompt(comment)
+                    # 1.2) Build system + user prompts for THIS comment
+                    sys_prompt, usr_prompt = prompt_runtime_service.create_prompt(
+                        content_analysis=content_analysis,
+                        comment=comment,
+                    )
 
-                    # (3) Call LLM/model API with the prompts and get a result
+                    # 1.3) Invoke the model
                     api_result = client.invoke(sys_prompt, usr_prompt)
 
-                    # (4) Release throttle/resource if used
+                    # 1.4)Always release after the call if used
                     if rate_limiter:
                         rate_limiter.release()
 
-                    # (5) Parse and check validity of JSON result
-                    if check_json(api_result):
-                        parsed = json.loads(api_result) if isinstance(api_result, str) else api_result
-                        missing = [] # To collect any classifications absent from the model output
-                        label_map = {}
-
-                        # (6) For every classification this comment needs
-                        for classification in classification_group:
-                            label_data = parsed.get(classification.name)
-
-                            if label_data is None:
-                                # If label is missing, remember to retry
-                                missing.append(classification.name)
-                                continue
-
-                            # (7) Build Label instance from the API result dict or raw value
-                            label = Label(
-                                value=label_data.get("value") if isinstance(label_data, dict) else label_data,
-                                explanation=label_data.get("explanation") if isinstance(label_data, dict) else None
-                            )
-
-                            # (8) Validate label (type/range/category); if invalid, store a default error Label
-                            is_valid = classification_service.validate_label_for_classification(classification, label)
-                            label_map[classification.name] = label if is_valid else Label(
-                                value=None, explanation="Invalid label value."
-                            )
-
-                        if missing:
-                            # (9) If any label is missing, retry the whole model call for this comment
-                            attempts += 1
-                            if attempts < max_retries:
-                                print(
-                                    f"  ⚠️  [{model_name}] Missing labels {missing} for comment ID {comment.comment_id}, retry {attempts}/{max_retries}"
-                                )
-                            continue  # Retry
-                        else:
-                            # (10) If all labels present, check if all are valid (success for this comment)
-                            success = all(l.value is not None for l in label_map.values())
-                            print(
-                                f"  [{model_name}] Processed comment ID {comment.comment_id}: "
-                                f"{'Success' if success else 'Some labels invalid'}"
-                            )
-                    else:
-                        # (11) If model response isn't JSON, count as failed attempt, possibly retry
+                    # 1.5) Ensure the reply is JSON-ish
+                    if not check_json(api_result):
                         attempts += 1
                         if attempts < max_retries:
                             print(
-                                f"  ⚠️  [{model_name}] Comment ID {comment.comment_id} returned non-JSON, retry {attempts}/{max_retries}"
+                                f"  ⚠️ [{model_name}] Comment ID {comment.comment_id} "
+                                f"returned non-JSON, retry {attempts}/{max_retries}"
                             )
+                        continue
+
+                    # 1.6) Parse JSON into a Python dict
+                    parsed = (
+                        json.loads(api_result)
+                        if isinstance(api_result, str)
+                        else api_result
+                    )
+
+                    missing: list[str] = []
+                    label_map = {}
+
+                    # ==========================================
+                    # 2) BUILD LABELS FOR EACH CLASSIFICATION
+                    # ==========================================
+                    for classification in classification_group:
+                        label_data = parsed.get(classification.name)
+
+                        if label_data is None:
+                            # Missing label -> mark for retry
+                            missing.append(classification.name)
+                            continue
+
+                        # Build Label from either dict or raw scalar
+                        if isinstance(label_data, dict):
+                            label = Label(
+                                value=label_data.get("value"),
+                                explanation=label_data.get("explanation"),
+                            )
+                        else:
+                            label = Label(value=label_data, explanation=None)
+
+                        # Validate label, or mark as invalid
+                        is_valid = classification_service.validate_label_for_classification(
+                            classification,
+                            label,
+                        )
+                        label_map[classification.name] = (
+                            label
+                            if is_valid
+                            else Label(value=None, explanation="Invalid label value.")
+                        )
+
+                    # If any classifications missing, retry the whole call
+                    if missing:
+                        attempts += 1
+                        if attempts < max_retries:
+                            print(
+                                f"  ⚠️ [{model_name}] Missing labels {missing} "
+                                f"for comment ID {comment.comment_id}, "
+                                f"retry {attempts}/{max_retries}"
+                            )
+                        continue
+
+                    # All labels present: consider success if all have non-None value
+                    success = all(l.value is not None for l in label_map.values())
+                    print(
+                        f"  [{model_name}] Processed comment ID {comment.comment_id}: "
+                        f"{'Success' if success else 'Some labels invalid'}"
+                    )
+
                 except Exception as e:
-                    # (12) Any exception releases rate limiter and counts as a failed attempt
+                    # Any exception: release limiter, count attempt, maybe retry
                     if rate_limiter:
                         rate_limiter.release()
                     attempts += 1
                     print(
-                        f"  ✗ [{model_name}] Error processing comment ID {comment.comment_id}: {str(e)}"
+                        f"  ✗ [{model_name}] Error processing comment ID "
+                        f"{comment.comment_id}: {str(e)}"
                     )
 
-            # (13) Ensure the comment.labels field exists and is ready for model/classification results
-            if not hasattr(comment, 'labels') or comment.labels is None:
+            # =======================================================
+            # 3) ATTACH RESULTS TO COMMENT (labels per classification)
+            # =======================================================
+            if not hasattr(comment, "labels") or comment.labels is None:
                 comment.labels = {}
             comment.labels.setdefault(model_name, {})
 
-            # (14) Store results for every classification: actual Label if valid, or error Label if not
             for classification in classification_group:
-                if classification.name in label_map and label_map[classification.name].value is not None:
-                    comment.labels[model_name][classification.name] = label_map[classification.name]
+                cls_name = classification.name
+                if (
+                    cls_name in label_map
+                    and label_map[cls_name].value is not None
+                ):
+                    comment.labels[model_name][cls_name] = label_map[cls_name]
                 else:
-                    # Store a default error Label for missing, invalid, or never-computed outputs
-                    comment.labels[model_name][classification.name] = Label(
+                    # Default error Label when missing/invalid/exceeded retries
+                    comment.labels[model_name][cls_name] = Label(
                         value=None,
-                        explanation="Label result missing, invalid, or retries exceeded."
+                        explanation="Label result missing, invalid, or retries exceeded.",
                     )
 
             # QPS control
