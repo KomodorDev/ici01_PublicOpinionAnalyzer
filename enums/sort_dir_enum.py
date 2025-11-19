@@ -15,3 +15,7 @@ class SortDirEnum(str, Enum):
     DEFAULT = "default"  # platform default sorting
     # ASC = "asc"
     # DSC = "dsc"
+    
+    def __str__(self) -> str:
+        return self.value
+

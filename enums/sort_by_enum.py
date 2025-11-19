@@ -23,3 +23,5 @@ class SortByEnum(str, Enum):
     # TOP = "top"
     # NEWEST = "newest"
     # OLDEST = "oldest"
+    def __str__(self) -> str:
+        return self.value
