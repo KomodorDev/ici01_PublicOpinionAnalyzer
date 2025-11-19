@@ -2,8 +2,7 @@
 # services/classification_service.py
 from typing import List, Dict
 from enums.classification_output_enum import ClassificationOutputEnum
-from models.classification_models import Classification, ClassificationGroup
-from models.label_model import Label
+from models.domain import ClassificationGroup, Classification, Label
 from repositories.classification_repository import ClassificationRepository
 
 

@@ -16,9 +16,7 @@ import json
 from typing import Any
 
 from enums.platform_enum import PlatformEnum
-from models.classification_models import ClassificationGroup
-from models.content_models import ContentAnalysis, ContentItem
-from models.label_model import Label
+from models.domain import ClassificationGroup, ContentAnalysis, ContentItem, Label
 from services.classification_service import ClassificationService
 from services.prompt_runtime_service import PromptRuntimeService
 

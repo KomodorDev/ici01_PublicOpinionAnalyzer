@@ -7,7 +7,7 @@ Abstract base class for platform-specific content fetchers.
 """
 
 from abc import ABC, abstractmethod
-from models.content_models import ContentAnalysis
+from models.domain import ContentAnalysis, Comment
 
 
 ##################################################################
@@ -61,17 +61,21 @@ class ContentFetcher(ABC):
         """
 
     @abstractmethod
-    def fetch_comments(self, url: str):
+    def fetch_comments(self, analysis: ContentAnalysis) -> list[Comment]:
         """
-        Fetch only the comments for the given content URL from the platform.
+        Fetch comments for the given content and update progress fields on the
+        provided ContentAnalysis object.
 
         Args:
-            url: The content URL whose comments to fetch.
+            analysis: ContentAnalysis instance whose content.url determines
+                    the fetch target, and whose fetch_* fields should be
+                    updated during progress.
 
         Returns:
-            List of Comment objects associated with the content.
+            List of Comment objects (also assigned to analysis.comments).
 
         Raises:
-            ValueError: If URL is invalid or comments not found.
+            Exception: Fetcher-specific errors (network issues, parsing issues, etc.).
         """
+
 ##################################################################

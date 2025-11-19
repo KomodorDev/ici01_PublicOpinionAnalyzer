@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 
 from enums.platform_enum import PlatformEnum
-from models.prompt_template_model import PromptTemplate
+from models.domain import PromptTemplate
 
 
 ##################################################################

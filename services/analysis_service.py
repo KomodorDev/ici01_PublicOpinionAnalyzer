@@ -16,7 +16,7 @@ from services.model_service import ModelService
 from services.classification_service import ClassificationService
 from services.export_service import ExportService
 from services.ratelimiter import RateLimiter
-from models.content_models import ContentAnalysis
+from models.domain import ContentAnalysis
 
 
 class AnalysisService:

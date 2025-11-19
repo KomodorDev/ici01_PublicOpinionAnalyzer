@@ -9,8 +9,7 @@ Local LM Studio provider — OpenAI-compatible API running on localhost.
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
 import requests
-
-from models.llm_model_info_model import LLMModelInfo
+from models.domain import LLMModelInfo
 from services.model_providers.base_provider import ModelProvider
 
 

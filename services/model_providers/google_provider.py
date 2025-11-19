@@ -10,7 +10,7 @@ from google import genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from services.model_providers.base_provider import ModelProvider
-from models.llm_model_info_model import LLMModelInfo
+from models.domain import LLMModelInfo
 
 
 ##################################################################

@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional
 import gradio as gr
-from models.classification_models import ClassificationGroup, ClassificationOutputEnum
+from models.domain import ClassificationGroup
+from enums.classification_output_enum import ClassificationOutputEnum
 
 class ClassificationView:
     """Defines the Gradio layout for the Classification management tab (new model)."""

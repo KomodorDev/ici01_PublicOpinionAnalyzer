@@ -7,7 +7,6 @@ Holds all content fetcher classes responsible for retrieving data from social me
 
 from .base_fetcher import ContentFetcher
 from .youtube_fetcher import YouTubeFetcher
-from .tiktok_fetcher import TikTokFetcher
 
 # Define what’s publicly importable from this package
-__all__ = ["ContentFetcher", "YouTubeFetcher", "TikTokFetcher"]
+__all__ = ["ContentFetcher", "YouTubeFetcher"]

@@ -52,7 +52,7 @@ import shutil
 from dataclasses import asdict
 from typing import List
 from enums.classification_output_enum import ClassificationOutputEnum
-from models.classification_models import Classification, ClassificationGroup
+from models.domain import Classification, ClassificationGroup
 
 ##################################################################
 class ClassificationRepository:

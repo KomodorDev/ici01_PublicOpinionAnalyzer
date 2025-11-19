@@ -51,7 +51,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 from datetime import timezone
 from enums.platform_enum import PlatformEnum
-from models.prompt_template_model import PromptTemplate
+from models.domain import PromptTemplate
 from services.prompt_template_service import PromptTemplateService
 from views.prompt_template_view import PromptTemplateView
 
