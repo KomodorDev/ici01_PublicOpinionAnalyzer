@@ -249,7 +249,7 @@ class VideoAnalysisService:
 
         Args:
             provider: Provider name
-            model_id: Model identifier
+            model_name: Model identifier
 
         Returns:
             True if model supports video
