@@ -560,7 +560,7 @@ class AnalysisController:
 
         # Optional safety: don't start a second run while one is still running
         if self._analysis_thread is not None and self._analysis_thread.is_alive():
-            return
+            return {"ok": False, "message": "Analysis is already running."}
 
         # 3) Start background thread so we don't block the UI
         thread = threading.Thread(
