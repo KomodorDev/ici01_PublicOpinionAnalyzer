@@ -16,8 +16,8 @@ import shutil
 from datetime import datetime, timezone
 from pprint import pprint
 from dataclasses import asdict
+from typing import List
 
-from gradio import List
 
 
 from enums import PlatformEnum, TaskStatusEnum
