@@ -1338,4 +1338,3 @@ class AnalysisView:
                 )
 
             return "\n".join(lines)
-
