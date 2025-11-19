@@ -299,8 +299,6 @@ def main():
         print(f"\n  {i}. {model.provider}/{model.name}")
         print(f"     Native video: {getattr(model, 'supports_native_video', False)}")
 
-# No availability check an
-
     # Test video analysis
     print("\n" + "=" * 60)
     print("Video Analysis Test")
