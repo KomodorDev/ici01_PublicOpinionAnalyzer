@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from enums import TaskStatusEnum
+from enums import TaskStatusEnum, ProviderEnum
 
 
 @dataclass
@@ -15,7 +15,7 @@ class ModelRunProgress:
     One instance = one (provider, model_name) run on this video.
     """
 
-    provider: str              # "openai", "google", ...
+    provider: ProviderEnum              # "openai", "google", ...
     model_name: str            # "gpt-4o-mini", "gemini-1.5-flash", ...
 
     status: TaskStatusEnum = TaskStatusEnum.PENDING   # PENDING | RUNNING | DONE | ERROR
