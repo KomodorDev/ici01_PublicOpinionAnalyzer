@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enums.provider_enum import ProviderEnum
 from enums.task_status_enum import TaskStatusEnum
 
-
+@dataclass
 class ModelRunProgressViewModel:
     provider: ProviderEnum
     model_name: str
