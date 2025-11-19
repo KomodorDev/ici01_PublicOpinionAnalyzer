@@ -11,7 +11,7 @@ class ModelRunProgressViewModel:
     label: str # e.g., "OpenAI - GPT-4", "Antrhopic - Claude 2"
 
     status: TaskStatusEnum        # PENDING | RUNNING | DONE | ERROR
-    progress: float               # 0.0–1.0
-    current_comment: int
-    total_comments: int
+    progress: float = 0.0               # 0.0–1.0
+    current_comment: int = 0
+    total_comments: int = 0
     error: Optional[str] = None
