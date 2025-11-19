@@ -1,4 +1,5 @@
 import threading
+import logging
 from typing import List, Optional, Tuple, Dict, Any
 
 from services import (
@@ -15,13 +16,13 @@ from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
 
 from mappers import AnalysisMapper
 
-from models.domain import LLMModelInfo, ContentAnalysis
+from models.domain import LLMModelInfo, ContentAnalysis, ModelRunProgress
 from models.view_models.analysis import (
     AnalysisViewModel,
     LLMModelInfoViewModel,
     ContentItemDetailViewModel,
     ContentItemListViewModel,
-    ContentAnalysisRunViewModel,
+    ContentAnalysisRunViewModel
 )
 
 from views import AnalysisView
@@ -504,7 +505,7 @@ class AnalysisController:
         analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
         if not analyses:
             return {"ok": False, "message": "No content items to analyze."}
-        
+
         # title -> list of issue strings
         issues_by_title: dict[str, list[str]] = {}
 
@@ -562,10 +563,10 @@ class AnalysisController:
         if self._analysis_thread is not None and self._analysis_thread.is_alive():
             return {"ok": False, "message": "Analysis is already running."}
 
-        # 3) Start background thread so we don't block the UI
+        # 4) Start background thread so we don't block the UI
         thread = threading.Thread(
             target=self._run_analysis_background,
-            args=(analyses,),
+            args=(analyses, selected_models),
             daemon=True,
         )
         self._analysis_thread = thread
@@ -578,22 +579,29 @@ class AnalysisController:
         }
 
     # ---------------------------------------------------------
-    def _run_analysis_background(self, analyses: List[ContentAnalysis]) -> None:
+    def _run_analysis_background(self, analyses: List[ContentAnalysis], selected_models: List[Tuple[str, str]],) -> None:
         """
         Background worker: run the analysis and update per-model status on error.
         """
         try:
-            self.analysis_service.run_analysis(analyses)
+            self.analysis_service.run_analysis(
+                analyses=analyses,
+                selected_models=selected_models,
+            )
         except Exception as exc:
-            # If the whole run crashes, mark all model runs as ERROR so UI can show something useful.
+            # 1) Log full traceback so you see it in the console/log file
+            logging.exception("Analysis failed in background thread")
+            # or at least:
+            # traceback.print_exc()
+
+            # 2) Propagate a short message into the model state for the UI
             msg = f"Analysis failed: {exc!r}"
             for ca in analyses:
-                for mr in ca.model_run_progress:
+                for mr in getattr(ca, "model_run_progress", []) or []:
                     mr.status = TaskStatusEnum.ERROR
                     mr.error = msg
 
         finally:
-            # Allow new runs later
             self._analysis_thread = None
 
     # ---------------------------------------------------------
