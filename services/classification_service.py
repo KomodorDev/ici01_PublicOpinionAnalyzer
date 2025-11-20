@@ -295,7 +295,7 @@ class ClassificationService:
             if value is None:
                 pass
             elif isinstance(value, (int, float)):
-                if not (0.0 <= float(value) <= 1.0):
+                if not 0.0 <= float(value) <= 1.0:
                     return False
             else:
                 return False
