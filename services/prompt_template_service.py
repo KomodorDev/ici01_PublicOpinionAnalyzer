@@ -101,7 +101,6 @@ class PromptTemplateService:
                 PlaceholderEnum.VIDEOCONTEXT,
                 PlaceholderEnum.TARGETCOMMENT,
             ],
-            PlatformEnum.TWITTER: [PlaceholderEnum.OUTPUTFORMAT],
             PlatformEnum.REDDIT: [PlaceholderEnum.OUTPUTFORMAT],
         }
 
@@ -110,7 +109,6 @@ class PromptTemplateService:
                 PlaceholderEnum.THREADCOMMENTS,
                 PlaceholderEnum.TAGGEDCOMMENTS,
             ],
-            PlatformEnum.TWITTER: [PlaceholderEnum.LANG],
             PlatformEnum.REDDIT: [],
         }
 
