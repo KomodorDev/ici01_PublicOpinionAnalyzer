@@ -1321,8 +1321,8 @@ class AnalysisView:
                 return "_No analyses yet._"
 
             lines = [
-                "| Platform | Title |  Fetch   | Models | Export |",
-                "|----------|-------|----------|--------|--------|",
+                "| Platform   | Title     |  Fetch   | Model Runs | Export |",
+                "|------------|-----------|----------|------------|--------|",
             ]
 
             for run in runs:
@@ -1337,13 +1337,22 @@ class AnalysisView:
                         label = f"{m.provider}:{m.model_name}"
                         status_str = str(m.status)
 
+                        # "progress" display e.g. (12/42)
+                        progress_str = (
+                            f"({m.current_comment}/{m.total_comments})"
+                            if m.total_comments
+                            else ""
+                        )
+
+                        # Base line: `provider:model` STATUS (x/y)
+                        base = f"`{label}` {status_str} {progress_str}".strip()
+
                         if m.error:
                             model_bits.append(
-                                f"`{label}` {status_str}<br>"
-                                f"<sub>⚠️ {m.error}</sub>"
+                                f"{base}<br><sub>⚠️ {m.error}</sub>"
                             )
                         else:
-                            model_bits.append(f"`{label}` {status_str}")
+                            model_bits.append(base)
 
                     models_cell = "<br>".join(model_bits)
                 else:
