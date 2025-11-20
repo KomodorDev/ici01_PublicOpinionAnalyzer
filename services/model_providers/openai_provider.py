@@ -30,7 +30,7 @@ class OpenAIProvider(ModelProvider):
             settings_service: SettingsService instance for configuration access.
                             If None, creates a new instance.
         """
-        self.provider_name = "openai"
+        self.provider_name = str(ProviderEnum.OPENAI)
 
         # Use provided settings service or create new one
         if settings_service is None:
@@ -149,12 +149,16 @@ class OpenAIProvider(ModelProvider):
                 f"{self.provider_name.title()} not available: {message}"
             )
 
-        return ChatOpenAI(
+        client = ChatOpenAI(
             model=model_name,
             api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_tokens=kwargs.get("max_tokens", None),
         )
+
+        client.name = f"{self.provider_name}_{model_name}"   # "openai:gpt-4o-mini"
+
+        return client
 
     # ----------------------------------------------------------------
 
@@ -219,6 +223,27 @@ def main():
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )
+    
+        # -----------------------------------------
+        # DEBUG: Print all attributes of the client
+        # -----------------------------------------
+        print("\nDEBUG: OpenAIC client attributes")
+        print("type:", type(client))
+
+        # Print __dict__ if available
+        if hasattr(client, "__dict__"):
+            print("\nclient.__dict__:")
+            for k, v in client.__dict__.items():
+                print(f"  {k}: {v}")
+        else:
+            print("\nclient has no __dict__, printing dir() instead:")
+            for attr in dir(client):
+                try:
+                    val = getattr(client, attr)
+                    print(f"  {attr}: {val}")
+                except Exception:
+                    print(f"  {attr}: <error retrieving value>")
+        # -----------------------------------------
 
         # Make a simple request
         response = client.invoke("What is 2+2? Answer with just the number.")
