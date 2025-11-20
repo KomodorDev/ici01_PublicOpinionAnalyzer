@@ -5,6 +5,8 @@ google_provider.py
 
 Google AI (Gemini) provider implementation.
 """
+import traceback
+
 from typing import List, Optional
 from google import genai
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -219,7 +221,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Model inference test FAILED!")
         print(f"   Error: {str(e)}")
-        import traceback
+
         traceback.print_exc()
 
     print("\n" + "="*60)

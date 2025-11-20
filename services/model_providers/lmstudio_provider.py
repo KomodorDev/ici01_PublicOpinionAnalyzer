@@ -5,6 +5,7 @@ lmstudio_provider.py
 
 Local LM Studio provider — OpenAI-compatible API running on localhost.
 """
+import traceback
 
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
@@ -234,7 +235,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Model inference test FAILED!")
         print(f"   Error: {str(e)}")
-        import traceback
+
         traceback.print_exc()
 
     print("\n" + "="*60)
