@@ -17,6 +17,7 @@ class ModelRunProgress:
 
     provider: ProviderEnum              # "openai", "google", ...
     model_name: str            # "gpt-4o-mini", "gemini-1.5-flash", ...
+    node_name: str          # "openai_gpt-4" (for LangGraph / UI)
 
     status: TaskStatusEnum = TaskStatusEnum.PENDING   # PENDING | RUNNING | DONE | ERROR
     progress: float = 0.0                              # 0.0–1.0
