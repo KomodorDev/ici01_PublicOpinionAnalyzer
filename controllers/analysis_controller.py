@@ -1,5 +1,44 @@
+"""
+analysis_controller.py
+======================
+
+Controller for the Analysis view.
+
+This module wires the UI (AnalysisView) to the core domain and service layer.
+It does **not** implement heavy business logic itself, but coordinates calls
+into the underlying services and maps domain models into view models.
+
+Responsibilities:
+    - Build and render the initial AnalysisViewModel for the analysis page.
+    - React to UI callbacks from the view:
+        * Parsing pasted links and creating/updating ContentAnalysis objects.
+        * Handling selection, removal, and per-content configuration changes:
+          - prompt template
+          - classification group
+          - comment sort settings
+          - comment limit
+        * Generating and saving content summaries via VideoAnalysisService.
+        * Starting an analysis run for all current ContentAnalysis items.
+        * Exposing a polling endpoint to report ongoing analysis progress.
+    - Delegate domain-heavy work to services:
+        * ContentService / ContentAnalysisManager for content and comments.
+        * PromptTemplateService and ClassificationService for configuration.
+        * VideoAnalysisService for AI video summaries.
+        * ModelService and AnalysisService for LLM model selection and
+          running the actual comment analysis (possibly in a background thread).
+    - Convert between domain models and view models via AnalysisMapper so the
+      view layer receives only UI-friendly data structures.
+
+The controller is intentionally kept "thin":
+it validates user-facing configuration, starts background work via
+AnalysisService, and returns updated view models, while the real analysis
+workflow lives in the service layer and graph code.
+"""
+
+
 import threading
 import logging
+import traceback
 from typing import List, Optional, Tuple, Dict, Any
 
 from services import (
@@ -12,11 +51,11 @@ from services import (
     AnalysisService
 )
 
-from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
+from enums import SortByEnum, SortDirEnum, PlatformEnum
 
 from mappers import AnalysisMapper
 
-from models.domain import LLMModelInfo, ContentAnalysis, ModelRunProgress
+from models.domain import LLMModelInfo, ContentAnalysis
 from models.view_models.analysis import (
     AnalysisViewModel,
     LLMModelInfoViewModel,
@@ -589,17 +628,12 @@ class AnalysisController:
                 selected_models=selected_models,
             )
         except Exception as exc:
-            # 1) Log full traceback so you see it in the console/log file
+            print("=== ANALYSIS CRASHED ===")
+            traceback.print_exc()
             logging.exception("Analysis failed in background thread")
-            # or at least:
-            # traceback.print_exc()
-
-            # 2) Propagate a short message into the model state for the UI
             msg = f"Analysis failed: {exc!r}"
-            for ca in analyses:
-                for mr in getattr(ca, "model_run_progress", []) or []:
-                    mr.status = TaskStatusEnum.ERROR
-                    mr.error = msg
+            ...
+            raise  # <-- temporarily re-raise so it blows up hard
 
         finally:
             self._analysis_thread = None
