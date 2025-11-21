@@ -292,8 +292,7 @@ class ExportService:
         except Exception:
             # mark failure and re-raise so callers know
             content_analysis.export_status = TaskStatusEnum.ERROR
-
-
+            raise
     # ----------------------------------------------------------------
     @staticmethod
     def _slugify(text: str) -> str:
