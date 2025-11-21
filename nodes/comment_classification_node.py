@@ -194,8 +194,8 @@ def create_comment_classification_node(
                     print("  --- FULL TRACEBACK BELOW ---")
                     traceback.print_exc()
 
-                    # For now: re-raise so we see the error in the main log and stop
-                    raise
+                    # Error logged above; continue to next attempt or comment.
+                    # Removed re-raise to allow processing of remaining comments.
 
             # =======================================================
             # 3) ATTACH RESULTS TO COMMENT (labels per classification)
