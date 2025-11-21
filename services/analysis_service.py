@@ -170,12 +170,12 @@ class AnalysisService:
 
             # The graph expects content_analysis.models already loaded as clients
             final_state = graph.invoke(content_analysis)
-            self.print_content_analysis_debug(analyses[0])
+            self.print_content_analysis_debug(content_analysis)
 
             results_per_video.append(final_state)
 
             # Export individual results to .xlsx for each final_state/content
-            filepath = self.export_service.export_to_xlsx(final_state)
+            filepath = self.export_service.export_to_xlsx(content_analysis)
             output_paths.append(filepath)
 
         return output_paths
