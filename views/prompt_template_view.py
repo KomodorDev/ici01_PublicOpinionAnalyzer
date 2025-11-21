@@ -51,9 +51,9 @@ class PromptTemplateView:
         Controller callback. Given (platform_str, template_name), returns
         the selected template as a PromptTemplateDetailViewModel (or None).
         
-    on_save_clicked : Optional[Callable[[Dict, bool], Dict]]
+    on_save_clicked : Optional[Callable[[Dict, bool], PromptTemplateViewModel]]
         Controller callback. Given (template_dict, overwrite=True) returns
-        `{"ok": bool, "message": str, "saved": Optional[PromptTemplateDetailViewModel]}`.
+        updated PromptTemplateViewModel with refreshed template list and selected template.
         
     on_delete_clicked : Optional[Callable[[str, str], PromptTemplateViewModel]]
         Controller callback. Given (platform_str, template_name) returns
@@ -75,7 +75,7 @@ class PromptTemplateView:
         view_model: PromptTemplateViewModel,
         on_platform_changed: Callable[[str], PromptTemplateViewModel],
         on_template_changed: Callable[[str, str], Optional[PromptTemplateDetailViewModel]],
-        on_save_clicked: Optional[Callable[[Dict, bool], Dict]] = None,
+        on_save_clicked: Optional[Callable[[Dict, bool], PromptTemplateViewModel]] = None,
         on_delete_clicked: Optional[Callable[[str, str], PromptTemplateViewModel]] = None,
     ) -> None:
         """
@@ -306,29 +306,35 @@ class PromptTemplateView:
 
         # ----------------------------------------------------------------
         def _handle_save(plat, tpl_name_sel, nm, ds, sp, up, lu):
-            """Send payload to controller; controller responds with 'saved' ViewModel including placeholders."""
+            """Send payload to controller; controller responds with full PromptTemplateViewModel."""
             if on_save_clicked is None:
                 gr.Info("Save not wired.")
                 return (gr.update(),) * 9
 
             payload = _fields_to_dict(plat, nm, ds, sp, up, lu)
-            status = on_save_clicked(payload, True)
-            if not status.get("ok"):
-                gr.Warning(status.get("message", "Save failed."))
+            vm = on_save_clicked(payload, True)
+            
+            # Check for error message
+            if vm.error_message:
+                gr.Warning(vm.error_message)
+                # On error, return unchanged state
                 return (gr.update(),) * 9
 
-            saved_vm = status.get("saved") # Expecting PromptTemplateDetailViewModel
-            # refresh list of names for this platform
-            # Ideally on_save_clicked should return full VM if list changed, but here we reuse on_platform_changed to refresh list
-            refreshed_vm = on_platform_changed(plat)
-            choices = [CREATE_SENTINEL] + (refreshed_vm.template_name_choices or [])
+            # Success - use the returned ViewModel directly
+            if vm.info_message:
+                gr.Success(vm.info_message)
             
-            new_value = saved_vm.name if saved_vm else (tpl_name_sel or CREATE_SENTINEL)
-
+            # Build choices from ViewModel
+            choices = [CREATE_SENTINEL] + (vm.template_name_choices or [])
+            
+            # Get selected template from ViewModel
+            saved_vm = vm.selected_template
+            new_value = saved_vm.name if saved_vm and saved_vm.name else (tpl_name_sel or CREATE_SENTINEL)
+            
+            # Extract fields from selected template
             nm2, ds2, sp2, up2, lu2 = _tpl_to_fields(saved_vm)
             req2 = "\n".join(saved_vm.placeholders_required if saved_vm else [])
             opt2 = "\n".join(saved_vm.placeholders_optional if saved_vm else [])
-            gr.Success(status.get("message", "Saved."))
             del_enabled = new_value != CREATE_SENTINEL
 
             return (

@@ -188,11 +188,13 @@ class PromptTemplateController:
         return self._build_detail_view_model(tpl)
 
     # ----------------------------------------------------------------
-    def on_save_clicked(self, template_dict: Dict, overwrite: bool = True) -> Dict[str, Any]:
+    def on_save_clicked(self, template_dict: Dict, overwrite: bool = True) -> PromptTemplateViewModel:
         """
         Save (create/update) a template.
-        Returns: {"ok": bool, "message": str, "saved": PromptTemplateDetailViewModel|None}
+        Returns: Updated PromptTemplateViewModel with refreshed template list and selected template.
         """
+        # Extract platform early for error handling
+        platform: Optional[PlatformEnum] = None
         try:
             # Ensure we have a dict copy (otherwise we later delete "last_updated" from the caller's object)
             template_dict = dict(template_dict or {})
@@ -202,6 +204,7 @@ class PromptTemplateController:
 
             # Build model from dict
             model = PromptTemplate.from_dict(template_dict)
+            platform = model.platform
 
             # Persist (Validation happens inside)
             path = self.prompt_template_service.save_prompt_template(
@@ -213,20 +216,43 @@ class PromptTemplateController:
                 model.platform, model.name
             )
 
-            # Return success with saved model dict
-            return {
-                "ok": True,
-                "message": f"Saved: {path}",
-                "saved": self._build_detail_view_model(saved),
-            }
+            # Build full ViewModel with updated template list and selected saved template
+            saved_detail_vm = self._build_detail_view_model(saved)
+            
+            # Get updated template names for this platform
+            names = self.prompt_template_service.list_all_prompt_template_names(model.platform)
+            
+            # Build full ViewModel with the saved template as selected
+            return PromptTemplateViewModel(
+                platform_choices=PlatformEnum.to_list(),
+                selected_platform=str(model.platform),
+                template_name_choices=names,
+                selected_template=saved_detail_vm,
+                info_message=f"Saved: {path}",
+                error_message=None,
+            )
 
         # Return failure with error message
         except ValueError as e:
-            return {"ok": False, "message": str(e), "saved": None}
+            # On error, build ViewModel for the platform if we can extract it
+            if platform:
+                return self._build_view_model_for_platform(platform, error_message=str(e))
+            else:
+                # Fallback: return ViewModel for first platform if we can't determine platform
+                plat = list(PlatformEnum)[0]
+                return self._build_view_model_for_platform(plat, error_message=str(e))
         except FileExistsError as e:
-            return {"ok": False, "message": str(e), "saved": None}
+            if platform:
+                return self._build_view_model_for_platform(platform, error_message=str(e))
+            else:
+                plat = list(PlatformEnum)[0]
+                return self._build_view_model_for_platform(plat, error_message=str(e))
         except Exception as e:
-            return {"ok": False, "message": f"Save failed: {e}", "saved": None}
+            if platform:
+                return self._build_view_model_for_platform(platform, error_message=f"Save failed: {e}")
+            else:
+                plat = list(PlatformEnum)[0]
+                return self._build_view_model_for_platform(plat, error_message=f"Save failed: {e}")
 
     # ----------------------------------------------------------------
     def on_delete_clicked(self, platform_str: str, template_name: str) -> PromptTemplateViewModel:
