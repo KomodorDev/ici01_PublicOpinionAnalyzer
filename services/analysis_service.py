@@ -150,7 +150,7 @@ class AnalysisService:
                         error=None,
                     )
                 )
-            
+
             content_analysis.model_run_progress = model_runs
 
             # 2) Ensure we actually have comments
@@ -185,7 +185,7 @@ class AnalysisService:
 
     def print_content_analysis_debug(self, ca):
         print("\n=== CONTENT ANALYSIS DEBUG ===")
-        
+
         # Basic metadata
         print(f"Platform: {getattr(ca, 'platform', None)}")
         print(f"Content ID: {getattr(ca.content, 'content_id', None)}")
