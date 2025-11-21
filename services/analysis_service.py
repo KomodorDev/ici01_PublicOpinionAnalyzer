@@ -142,6 +142,12 @@ class AnalysisService:
                         provider=provider,
                         model_name=model_name,
                         # 🔴 DIRTY HACK: store *client.name* here so it matches LangGraph node name
+                        # This is necessary because LangGraph nodes are identified by the string name of the client,
+                        # and ModelRunProgress expects a node_name that matches the graph's node naming convention.
+                        # Assumes that client.name is unique and stable for each model/provider combination.
+                        # TODO: Refactor to decouple ModelRunProgress from client internals.
+                        #       Ideally, node_name should be generated explicitly and consistently across the codebase,
+                        #       rather than relying on client.name. Consider tracking this in an issue for future cleanup.
                         node_name=client.name,  # e.g. "openai_gpt-4"
                         status=TaskStatusEnum.PENDING,
                         progress=0,
