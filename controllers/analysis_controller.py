@@ -51,7 +51,7 @@ from services import (
     AnalysisService
 )
 
-from enums import SortByEnum, SortDirEnum, PlatformEnum
+from enums import SortByEnum, SortDirEnum, PlatformEnum, TaskStatusEnum
 
 from mappers import AnalysisMapper
 
@@ -671,6 +671,26 @@ class AnalysisController:
             analysis_runs if analysis_runs else None
         )
 
+        # Controller-authoritative decision: is any analysis work still
+        # pending/running? Inspect fetch, per-model progress, and export
+        # statuses on the domain objects.
+        analysis_running = False
+        for ca in analyses:
+            if getattr(ca, "fetch_status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                analysis_running = True
+                break
+
+            for m in getattr(ca, "model_run_progress", []) or []:
+                if getattr(m, "status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                    analysis_running = True
+                    break
+            if analysis_running:
+                break
+
+            if getattr(ca, "export_status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                analysis_running = True
+                break
+
         return AnalysisViewModel(
             contents=None,  # do not touch the left list
             selected=None,  # do not change selection
@@ -678,6 +698,7 @@ class AnalysisController:
             analysis_runs=analysis_runs_or_none,
             info_message=None,
             error_message=None,
+            analysis_running=analysis_running,
         )
 
     # ================================================================
