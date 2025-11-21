@@ -44,7 +44,7 @@ def create_comment_classification_node(
         comments = content_analysis.comments
         classification_group = content_analysis.classification_group.classifications
 
-        model_name = client.model_name
+        model_name = client.name
         total_comments = len(comments)
 
         # mark as RUNNING
