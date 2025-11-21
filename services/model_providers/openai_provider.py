@@ -156,7 +156,7 @@ class OpenAIProvider(ModelProvider):
             max_tokens=kwargs.get("max_tokens", None),
         )
 
-        client.name = f"{self.provider_name}_{model_name}"   # "openai:gpt-4o-mini"
+        client.name = f"{self.provider_name}_{model_name}"   # "openai_gpt-4o-mini"
 
         return client
 
