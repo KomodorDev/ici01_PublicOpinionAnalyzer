@@ -593,7 +593,7 @@ class AnalysisView:
                 gr.update(value=""),  # limit_tb
             )
 
-        parse_links_btn.click(
+        parse_links_btn.click(  # pylint: disable=no-member
             fn=_handle_parse_links_clicked,
             inputs=[link_input_tb],
             outputs=[
@@ -775,7 +775,7 @@ class AnalysisView:
                 gr.update(value=limit_val),  # limit_tb
             )
 
-        content_list_radio.change(
+        content_list_radio.change(  # pylint: disable=no-member
             fn=_handle_content_clicked,
             inputs=[content_list_radio],
             outputs=[
@@ -974,7 +974,7 @@ class AnalysisView:
                 gr.update(value=limit_val),  # limit_tb
             )
 
-        remove_content_btn.click(
+        remove_content_btn.click(   # pylint: disable=no-member
             fn=_handle_remove_content_clicked,
             inputs=[content_list_radio],  # current selection
             outputs=[
@@ -1054,7 +1054,7 @@ class AnalysisView:
                 gr.update(value="ai"),  # or "AI model", up to you
             )
 
-        generate_summary_btn.click(
+        generate_summary_btn.click( # pylint: disable=no-member
             fn=_handle_generate_summary_clicked,
             inputs=[
                 content_list_radio,  # which content
@@ -1090,7 +1090,7 @@ class AnalysisView:
             # Mark the source as 'manual' (or whatever label you want)
             return gr.update(value="manual")
 
-        save_summary_btn.click(
+        save_summary_btn.click( # pylint: disable=no-member
             fn=_handle_summary_save_clicked,
             inputs=[
                 content_list_radio,  # which content item
@@ -1132,7 +1132,7 @@ class AnalysisView:
                 gr.update(value=summary_source_val),
             )
 
-        cancel_summary_btn.click(
+        cancel_summary_btn.click(   # pylint: disable=no-member
             fn=_handle_summary_cancel_clicked,
             inputs=[content_list_radio],
             outputs=[
@@ -1171,7 +1171,7 @@ class AnalysisView:
             # No UI changes needed here; dropdown already shows the correct value.
             return
 
-        prompt_template_dd.change(
+        prompt_template_dd.change(  # pylint: disable=no-member
             fn=_handle_prompt_template_changed,
             inputs=[content_list_radio, prompt_template_dd],
             outputs=[],
@@ -1205,7 +1205,7 @@ class AnalysisView:
 
             return
 
-        class_group_dd.change(
+        class_group_dd.change(  # pylint: disable=no-member
             fn=_handle_classification_group_changed,
             inputs=[content_list_radio, class_group_dd],
             outputs=[],
@@ -1253,7 +1253,7 @@ class AnalysisView:
             on_limit_changed(platform_enum, content_id, new_limit)
             return
 
-        limit_tb.change(
+        limit_tb.change(    # pylint: disable=no-member
             fn=_handle_limit_changed,
             inputs=[content_list_radio, limit_tb],
             outputs=[],
@@ -1291,7 +1291,7 @@ class AnalysisView:
             gr.Success(message or "Analysis started.")
             return "", gr.update(active=True)
 
-        run_analysis_btn.click(
+        run_analysis_btn.click( # pylint: disable=no-member
             fn=_handle_run_analysis,
             inputs=[analysis_models_dd],
             outputs=[analysis_error_md, analysis_timer],
@@ -1315,7 +1315,7 @@ class AnalysisView:
             running = bool(getattr(vm, "analysis_running", False))
             return md, gr.update(active=running)
 
-        analysis_timer.tick(
+        analysis_timer.tick(    # pylint: disable=no-member
             fn=_poll_analysis_status,
             inputs=None,
             outputs=[analysis_progress_md, analysis_timer],
