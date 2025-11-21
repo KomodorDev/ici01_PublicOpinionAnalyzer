@@ -58,7 +58,7 @@ class ExportService:
 
         # Mark export as running on the domain object so controllers/views
         content_analysis.export_status = TaskStatusEnum.RUNNING
-        
+
         # 1) Compute smart folder + filename
         platform_str = getattr(content_analysis, "platform", None)
         if platform_str is None and getattr(content_analysis, "content", None):
@@ -308,7 +308,10 @@ class ExportService:
 ##################################################################
 
 def main():
-    # Quick local self-test: create a ContentAnalysis with two comments and run export
+    """
+    Quick local self-test: create a ContentAnalysis with two comments and run export
+    """
+
     content_item = ContentItem(
         content_id="vid123",
         platform=PlatformEnum.YOUTUBE,
