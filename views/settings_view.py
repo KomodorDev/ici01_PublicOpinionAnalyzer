@@ -153,149 +153,112 @@ class SettingsView:
         # ================================================================
         
         # ----------------------------------------------------------------
-        def _handle_openai_key_saved(api_key: str):
-            """Wireback for OpenAI API key save button."""
-            if not api_key or api_key.strip() == "" or api_key == "API_KEY":
+        def _make_api_key_handler(provider_name: str, display_name: str):
+            """
+            Factory function to create API key save handlers.
+            
+            Args:
+                provider_name: Provider identifier (e.g., "openai", "anthropic")
+                display_name: Display name for the provider (e.g., "OpenAI API Key", "Google API Key (Gemini)")
+            
+            Returns:
+                Handler function for the API key save button
+            """
+            def handler(api_key: str):
+                """Wireback for API key save button."""
+                # Validation
+                if not api_key or api_key.strip() == "" or api_key == "API_KEY":
+                    return (
+                        gr.update(value=f"⚠️ Please enter a valid {display_name}"),
+                        gr.update()  # Keep input unchanged
+                    )
+                
+                if "***" in api_key or "****" in api_key:
+                    return (
+                        gr.update(value=f"⚠️ Please enter the actual API key, not the masked version"),
+                        gr.update()  # Keep input unchanged
+                    )
+                
+                # Call controller callback
+                vm = on_api_key_saved(provider_name, api_key)
+                status_icon = "✅" if vm.provider_statuses.get(provider_name, {}).get("available") else "⚠️"
+                new_masked_key = vm.masked_api_keys.get(provider_name, "API_KEY")
+                
+                # Extract status message from ViewModel
+                status_msg = (
+                    vm.info_message 
+                    or vm.error_message 
+                    or vm.provider_statuses.get(provider_name, {}).get('message', 'Saved successfully!')
+                )
+                
                 return (
-                    gr.update(value=f"⚠️ Please enter a valid OpenAI API key"),
-                    gr.update()  # Keep input unchanged
+                    gr.update(value=status_msg),
+                    gr.update(label=f"{status_icon} {display_name}", value=new_masked_key)
                 )
             
-            if "***" in api_key or "****" in api_key:
-                return (
-                    gr.update(value=f"⚠️ Please enter the actual API key, not the masked version"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_api_key_saved("openai", api_key)
-            status_icon = "✅" if vm.provider_statuses.get("openai", {}).get("available") else "⚠️"
-            new_masked_key = vm.masked_api_keys.get("openai", "API_KEY")
-            
-            # Use info_message or error_message from ViewModel if available
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('openai', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} OpenAI API Key", value=new_masked_key)
-            )
+            return handler
         
         # ----------------------------------------------------------------
-        def _handle_anthropic_key_saved(api_key: str):
-            """Wireback for Anthropic API key save button."""
-            if not api_key or api_key.strip() == "" or api_key == "API_KEY":
+        def _make_provider_url_handler(provider_name: str, display_name: str, default_url: str):
+            """
+            Factory function to create provider URL save handlers.
+            
+            Args:
+                provider_name: Provider identifier (e.g., "lmstudio", "ollama")
+                display_name: Display name for the provider (e.g., "LM Studio URL", "Ollama URL")
+                default_url: Default URL value if not set
+            
+            Returns:
+                Handler function for the provider URL save button
+            """
+            def handler(url: str):
+                """Wireback for provider URL save button."""
+                # Validation
+                if not url or url.strip() == "":
+                    return (
+                        gr.update(value=f"⚠️ {display_name} cannot be empty"),
+                        gr.update()  # Keep input unchanged
+                    )
+                
+                # Call controller callback
+                vm = on_provider_url_saved(provider_name, url)
+                status_icon = "✅" if vm.provider_statuses.get(provider_name, {}).get("available") else "⚠️"
+                
+                # Get updated URL from ViewModel
+                if provider_name == "lmstudio":
+                    new_url = vm.lmstudio_url or default_url
+                elif provider_name == "ollama":
+                    new_url = vm.ollama_url or default_url
+                else:
+                    new_url = default_url
+                
+                # Extract status message from ViewModel
+                provider_status = vm.provider_statuses.get(provider_name, {})
+                status_msg = (
+                    vm.info_message 
+                    or vm.error_message 
+                    or provider_status.get('message', 'Saved successfully!')
+                )
+                
                 return (
-                    gr.update(value=f"⚠️ Please enter a valid Anthropic API key"),
-                    gr.update()  # Keep input unchanged
+                    gr.update(value=status_msg),
+                    gr.update(label=f"{status_icon} {display_name}", value=new_url)
                 )
             
-            if "***" in api_key or "****" in api_key:
-                return (
-                    gr.update(value=f"⚠️ Please enter the actual API key, not the masked version"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_api_key_saved("anthropic", api_key)
-            status_icon = "✅" if vm.provider_statuses.get("anthropic", {}).get("available") else "⚠️"
-            new_masked_key = vm.masked_api_keys.get("anthropic", "API_KEY")
-            
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('anthropic', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} Anthropic API Key", value=new_masked_key)
-            )
+            return handler
         
-        # ----------------------------------------------------------------
-        def _handle_google_key_saved(api_key: str):
-            """Wireback for Google API key save button."""
-            if not api_key or api_key.strip() == "" or api_key == "API_KEY":
-                return (
-                    gr.update(value=f"⚠️ Please enter a valid Google API key"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            if "***" in api_key or "****" in api_key:
-                return (
-                    gr.update(value=f"⚠️ Please enter the actual API key, not the masked version"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_api_key_saved("google", api_key)
-            status_icon = "✅" if vm.provider_statuses.get("google", {}).get("available") else "⚠️"
-            new_masked_key = vm.masked_api_keys.get("google", "API_KEY")
-            
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('google', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} Google API Key (Gemini)", value=new_masked_key)
-            )
+        # Create handlers using factory functions
+        _handle_openai_key_saved = _make_api_key_handler("openai", "OpenAI API Key")
+        _handle_anthropic_key_saved = _make_api_key_handler("anthropic", "Anthropic API Key")
+        _handle_google_key_saved = _make_api_key_handler("google", "Google API Key (Gemini)")
+        _handle_deepseek_key_saved = _make_api_key_handler("deepseek", "DeepSeek API Key")
         
-        # ----------------------------------------------------------------
-        def _handle_deepseek_key_saved(api_key: str):
-            """Wireback for DeepSeek API key save button."""
-            if not api_key or api_key.strip() == "" or api_key == "API_KEY":
-                return (
-                    gr.update(value=f"⚠️ Please enter a valid DeepSeek API key"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            if "***" in api_key or "****" in api_key:
-                return (
-                    gr.update(value=f"⚠️ Please enter the actual API key, not the masked version"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_api_key_saved("deepseek", api_key)
-            status_icon = "✅" if vm.provider_statuses.get("deepseek", {}).get("available") else "⚠️"
-            new_masked_key = vm.masked_api_keys.get("deepseek", "API_KEY")
-            
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('deepseek', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} DeepSeek API Key", value=new_masked_key)
-            )
-        
-        # ----------------------------------------------------------------
-        def _handle_lmstudio_url_saved(url: str):
-            """Wireback for LM Studio URL save button."""
-            if not url or url.strip() == "":
-                return (
-                    gr.update(value=f"⚠️ LM Studio URL cannot be empty"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_provider_url_saved("lmstudio", url)
-            status_icon = "✅" if vm.provider_statuses.get("lmstudio", {}).get("available") else "⚠️"
-            new_url = vm.lmstudio_url or "http://localhost:1234/v1"
-            
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('lmstudio', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} LM Studio URL", value=new_url)
-            )
-        
-        # ----------------------------------------------------------------
-        def _handle_ollama_url_saved(url: str):
-            """Wireback for Ollama URL save button."""
-            if not url or url.strip() == "":
-                return (
-                    gr.update(value=f"⚠️ Ollama URL cannot be empty"),
-                    gr.update()  # Keep input unchanged
-                )
-            
-            vm = on_provider_url_saved("ollama", url)
-            status_icon = "✅" if vm.provider_statuses.get("ollama", {}).get("available") else "⚠️"
-            new_url = vm.ollama_url or "http://localhost:11434"
-            
-            status_msg = vm.info_message or vm.error_message or vm.provider_statuses.get('ollama', {}).get('message', 'Saved successfully!')
-            
-            return (
-                gr.update(value=status_msg),
-                gr.update(label=f"{status_icon} Ollama URL", value=new_url)
-            )
+        _handle_lmstudio_url_saved = _make_provider_url_handler(
+            "lmstudio", "LM Studio URL", "http://localhost:1234/v1"
+        )
+        _handle_ollama_url_saved = _make_provider_url_handler(
+            "ollama", "Ollama URL", "http://localhost:11434"
+        )
         
         # Wire up buttons
         openai_save_btn.click(
