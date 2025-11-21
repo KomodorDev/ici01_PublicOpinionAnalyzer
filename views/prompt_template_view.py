@@ -215,8 +215,8 @@ class PromptTemplateView:
             choices = [CREATE_SENTINEL] + (new_vm.template_name_choices or [])
 
             nm, ds, sp, up, lu = _tpl_to_fields(new_vm.selected_template)
-            req = "\n".join((new_vm.selected_template.placeholders_required if new_vm.selected_template else []) or [])
-            opt = "\n".join((new_vm.selected_template.placeholders_optional if new_vm.selected_template else []) or [])
+            req = "\n".join(new_vm.selected_template.placeholders_required if new_vm.selected_template else [])
+            opt = "\n".join(new_vm.selected_template.placeholders_optional if new_vm.selected_template else [])
 
             desired = nm or CREATE_SENTINEL
             value = desired if (desired in choices) else choices[0]  # Ensure selected value exists in choices, otherwise default to first choice
@@ -257,8 +257,8 @@ class PromptTemplateView:
                 # Reuse on_platform_changed to get the "Create" mode VM (which has empty fields but correct rules)
                 new_vm = on_platform_changed(plat)  # <- reuse existing callback which returns VM
                 
-                req = "\n".join((new_vm.selected_template.placeholders_required if new_vm.selected_template else []) or [])
-                opt = "\n".join((new_vm.selected_template.placeholders_optional if new_vm.selected_template else []) or [])
+                req = "\n".join(new_vm.selected_template.placeholders_required if new_vm.selected_template else [])
+                opt = "\n".join(new_vm.selected_template.placeholders_optional if new_vm.selected_template else [])
                 del_enabled = False
                 return (
                     gr.update(value=""),  # name
@@ -274,8 +274,8 @@ class PromptTemplateView:
             # existing branch for loading an actual template
             vm = on_template_changed(plat, tpl_name)
             nm, ds, sp, up, lu = _tpl_to_fields(vm)
-            req = "\n".join((vm.placeholders_required if vm else []) or [])
-            opt = "\n".join((vm.placeholders_optional if vm else []) or [])
+            req = "\n".join(vm.placeholders_required if vm else [])
+            opt = "\n".join(vm.placeholders_optional if vm else [])
             del_enabled = True
             return (
                 gr.update(value=nm),
@@ -326,8 +326,8 @@ class PromptTemplateView:
             new_value = saved_vm.name if saved_vm else (tpl_name_sel or CREATE_SENTINEL)
 
             nm2, ds2, sp2, up2, lu2 = _tpl_to_fields(saved_vm)
-            req2 = "\n".join((saved_vm.placeholders_required if saved_vm else []) or [])
-            opt2 = "\n".join((saved_vm.placeholders_optional if saved_vm else []) or [])
+            req2 = "\n".join(saved_vm.placeholders_required if saved_vm else [])
+            opt2 = "\n".join(saved_vm.placeholders_optional if saved_vm else [])
             gr.Success(status.get("message", "Saved."))
             del_enabled = new_value != CREATE_SENTINEL
 
@@ -402,8 +402,8 @@ class PromptTemplateView:
             # new_vm.selected_template is populated.
             sel_vm = new_vm.selected_template
             nm, ds, sp, up, lu = _tpl_to_fields(sel_vm)
-            req = "\n".join((sel_vm.placeholders_required if sel_vm else []) or [])
-            opt = "\n".join((sel_vm.placeholders_optional if sel_vm else []) or [])
+            req = "\n".join(sel_vm.placeholders_required if sel_vm else [])
+            opt = "\n".join(sel_vm.placeholders_optional if sel_vm else [])
             
             new_val = sel_vm.name if sel_vm and sel_vm.name else CREATE_SENTINEL
             del_enabled = new_val != CREATE_SENTINEL
