@@ -632,8 +632,7 @@ class AnalysisController:
             traceback.print_exc()
             logging.exception("Analysis failed in background thread")
             msg = f"Analysis failed: {exc!r}"
-            ...
-            raise  # <-- temporarily re-raise so it blows up hard
+            print(msg)
 
         finally:
             self._analysis_thread = None
