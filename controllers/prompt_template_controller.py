@@ -48,10 +48,12 @@ writes via Service → View re-renders.
 """
 
 from __future__ import annotations
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from datetime import timezone
 from enums.platform_enum import PlatformEnum
 from models.domain import PromptTemplate
+from models.view_models.prompt_template.prompt_view_model import PromptTemplateViewModel
+from models.view_models.prompt_template.prompt_template_detail_view_model import PromptTemplateDetailViewModel
 from services.prompt_template_service import PromptTemplateService
 from views.prompt_template_view import PromptTemplateView
 
@@ -74,9 +76,9 @@ class PromptTemplateController:
     # Helpers
     # ================================================================
     # ----------------------------------------------------------------
-    def build_view_dict_for_prompt_template(self, t: PromptTemplate) -> Dict:
+    def _build_detail_view_model(self, t: PromptTemplate) -> PromptTemplateDetailViewModel:
         """
-        Build the dictionary shown in the view for a selected PromptTemplate.
+        Build the ViewModel shown in the view for a selected PromptTemplate.
 
         Includes all metadata fields plus platform-specific placeholder rules
         (required, optional) and the placeholders currently found in the
@@ -86,20 +88,19 @@ class PromptTemplateController:
         opt = self.prompt_template_service.get_optional_placeholders(t.platform)
         found = self.prompt_template_service.extract_placeholders(t)
 
-        return {
-            "name": t.name,
-            "platform": str(t.platform),
-            "version": t.version,
-            "description": t.description or "",
-            "system_prompt": t.system_prompt or "",
-            "user_prompt": t.user_prompt or "",
-            "placeholders_required": req,
-            "placeholders_optional": opt,
-            "placeholders_found": found,
-            "last_updated": t.last_updated.astimezone(timezone.utc)
+        return PromptTemplateDetailViewModel(
+            name=t.name,
+            platform=str(t.platform),
+            description=t.description or "",
+            system_prompt=t.system_prompt or "",
+            user_prompt=t.user_prompt or "",
+            placeholders_required=req,
+            placeholders_optional=opt,
+            placeholders_found=found,
+            last_updated=t.last_updated.astimezone(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),
-        }
+        )
 
     # ================================================================
     # Callbacks wired by the view
@@ -107,11 +108,11 @@ class PromptTemplateController:
     # ----------------------------------------------------------------
     def on_platform_changed(
         self, platform_str: str
-    ) -> tuple[list[str], Optional[Dict]]:
+    ) -> PromptTemplateViewModel:
         """
-        Return (template_names, payload_dict):
+        Return updated PromptTemplateViewModel:
         - If any templates exist: payload is the FIRST template converted via
-            build_view_dict_for_prompt_template(...)
+            _build_detail_view_model(...)
         - If none exist: payload has only required/optional placeholders so the
             view can show rules in 'Create new' mode.
         """
@@ -120,42 +121,50 @@ class PromptTemplateController:
 
         # Get all template names for this platform
         names = self.prompt_template_service.list_all_prompt_template_names(platform)
+        
+        selected_vm: Optional[PromptTemplateDetailViewModel] = None
 
         # If we have templates, load the first one
         if names:
             first = names[0]
             try:
                 tpl = self.prompt_template_service.load_prompt_template(platform, first)
-                return names, self.build_view_dict_for_prompt_template(tpl)
+                selected_vm = self._build_detail_view_model(tpl)
             except Exception as e:
                 # degrade gracefully to rules-only if the first template fails to load
                 print(
                     f"[WARN] load first template '{first}' for {platform.value} failed: {e}"
                 )
 
-        # no templates (or failed to load): return rules-only payload, view will then show CREATE SENTINEL
-        return (
-            names,  # likely []
-            {
-                "name": "",
-                "description": "",
-                "system_prompt": "",
-                "user_prompt": "",
-                "placeholders_required": self.prompt_template_service.get_required_placeholders(
+        # no templates (or failed to load): construct a "dummy" VM for the Create mode that contains the rules
+        if not selected_vm:
+            selected_vm = PromptTemplateDetailViewModel(
+                name="",
+                platform=str(platform),
+                description="",
+                system_prompt="",
+                user_prompt="",
+                placeholders_required=self.prompt_template_service.get_required_placeholders(
                     platform
                 ),
-                "placeholders_optional": self.prompt_template_service.get_optional_placeholders(
+                placeholders_optional=self.prompt_template_service.get_optional_placeholders(
                     platform
                 ),
-                "last_updated": "-",
-                # optional: include platform so the view/controller can keep context
-                "platform": str(platform),
-            },
+                last_updated="-",
+            )
+            
+        return PromptTemplateViewModel(
+            platform_choices=PlatformEnum.to_list(), # Keep choices consistent
+            selected_platform=platform_str,
+            template_name_choices=names,
+            selected_template=selected_vm
         )
 
     # ----------------------------------------------------------------
-    def on_template_changed(self, platform_str: str, template_name: str):
-        """Return selected_template_dict for (platform, template_name)."""
+    def on_template_changed(
+        self, platform_str: str, template_name: str
+    ) -> Optional[PromptTemplateDetailViewModel]:
+        """Return selected_template_vm for (platform, template_name)."""
 
         # No template selected
         if not template_name:
@@ -164,13 +173,13 @@ class PromptTemplateController:
 
         # Load and return the selected template
         tpl = self.prompt_template_service.load_prompt_template(plat, template_name)
-        return self.build_view_dict_for_prompt_template(tpl)
+        return self._build_detail_view_model(tpl)
 
     # ----------------------------------------------------------------
-    def on_save_clicked(self, template_dict: Dict, overwrite: bool = True):
+    def on_save_clicked(self, template_dict: Dict, overwrite: bool = True) -> Dict[str, Any]:
         """
         Save (create/update) a template.
-        Returns: {"ok": bool, "message": str, "saved": Dict|None}
+        Returns: {"ok": bool, "message": str, "saved": PromptTemplateDetailViewModel|None}
         """
         try:
             # Ensure we have a dict copy (otherwise we later delete "last_updated" from the caller's object)
@@ -196,7 +205,7 @@ class PromptTemplateController:
             return {
                 "ok": True,
                 "message": f"Saved: {path}",
-                "saved": self.build_view_dict_for_prompt_template(saved),
+                "saved": self._build_detail_view_model(saved),
             }
 
         # Return failure with error message
@@ -208,17 +217,52 @@ class PromptTemplateController:
             return {"ok": False, "message": f"Save failed: {e}", "saved": None}
 
     # ----------------------------------------------------------------
-    def on_delete_clicked(self, platform_str: str, template_name: str):
+    def on_delete_clicked(self, platform_str: str, template_name: str) -> PromptTemplateViewModel:
         """
         Delete a template.
-        Returns: {"ok": bool, "message": str}
+        Returns: Updated PromptTemplateViewModel reflecting the deletion.
         """
-        try:
-            plat = PlatformEnum.from_str(platform_str)
+        plat = PlatformEnum.from_str(platform_str)
+        
+        # Helper to rebuild the view model for current platform (similar to on_platform_changed)
+        def _refresh_view_model(info_msg: Optional[str] = None, error_msg: Optional[str] = None):
+             # Refresh list
+            names = self.prompt_template_service.list_all_prompt_template_names(plat)
+            
+            # Select first available or dummy
+            selected_vm = None
+            if names:
+                try:
+                    tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
+                    selected_vm = self._build_detail_view_model(tpl)
+                except Exception:
+                    pass
+            
+            if not selected_vm:
+                selected_vm = PromptTemplateDetailViewModel(
+                    name="",
+                    platform=str(plat),
+                    description="",
+                    system_prompt="",
+                    user_prompt="",
+                    placeholders_required=self.prompt_template_service.get_required_placeholders(plat),
+                    placeholders_optional=self.prompt_template_service.get_optional_placeholders(plat),
+                    last_updated="-",
+                )
 
+            return PromptTemplateViewModel(
+                platform_choices=PlatformEnum.to_list(),
+                selected_platform=platform_str,
+                template_name_choices=names,
+                selected_template=selected_vm,
+                info_message=info_msg,
+                error_message=error_msg
+            )
+
+        try:
             # No template selected
             if not template_name:
-                return {"ok": False, "message": "No template selected."}
+                return _refresh_view_model(error_msg="No template selected.")
 
             # Call Service to delete
             deleted = self.prompt_template_service.delete_prompt_template(
@@ -227,16 +271,14 @@ class PromptTemplateController:
 
             # Return status
             if deleted:
-                return {
-                    "ok": True,
-                    "message": f"Deleted: {platform_str}/{template_name}.json",
-                }
+                return _refresh_view_model(info_msg=f"Deleted: {platform_str}/{template_name}.json")
+            
             # Return failure - not found
-            return {"ok": False, "message": "Template did not exist."}
+            return _refresh_view_model(error_msg="Template did not exist.")
 
         # Return failure with error message
         except Exception as e:
-            return {"ok": False, "message": f"Delete failed: {e}"}
+            return _refresh_view_model(error_msg=f"Delete failed: {e}")
 
     # ================================================================
     # Entrypoint
@@ -263,25 +305,59 @@ class PromptTemplateController:
         names = self.prompt_template_service.list_all_prompt_template_names(plat)
 
         # Load the first template (if any) so the view shows something populated on load
-        selected = (
-            self.prompt_template_service.load_prompt_template(plat, names[0])
-            if names
-            else None
+        selected_vm: Optional[PromptTemplateDetailViewModel] = None
+        if names:
+            try:
+                tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
+                selected_vm = self._build_detail_view_model(tpl)
+            except Exception:
+                pass
+        
+        # Fallback if no templates or error loading
+        if not selected_vm:
+             selected_vm = PromptTemplateDetailViewModel(
+                name="",
+                platform=str(plat),
+                description="",
+                system_prompt="",
+                user_prompt="",
+                placeholders_required=self.prompt_template_service.get_required_placeholders(plat),
+                placeholders_optional=self.prompt_template_service.get_optional_placeholders(plat),
+                last_updated="-",
+            )
+
+        # Construct the full ViewModel
+        vm = PromptTemplateViewModel(
+            platform_choices=platforms,
+            selected_platform=str(plat),
+            template_name_choices=names,
+            selected_template=selected_vm
         )
 
         # Render the view with current state and callback bindings
         self.prompt_template_view.render_prompt_template_view(
-            platform_choices=platforms,                             # dropdown options for platforms
-            selected_platform=str(plat),                            # current platform selection
-            template_name_choices=names,                            # dropdown options for templates
-            selected_template=(
-                self.build_view_dict_for_prompt_template(selected) if selected else None
-            ),                                                      # preloaded template details (or None)
-            on_platform_changed=self.on_platform_changed,           # callback: user changes platform
-            on_template_changed=self.on_template_changed,           # callback: user changes template
-            on_save_clicked=self.on_save_clicked,                   # callback: user saves template
-            on_delete_clicked=self.on_delete_clicked,               # callback: user deletes template
+            view_model=vm,
+            on_platform_changed=self.on_platform_changed,
+            on_template_changed=self.on_template_changed,
+            on_save_clicked=self.on_save_clicked,
+            on_delete_clicked=self.on_delete_clicked,
         )
+        # self.analysis_view.render_analysis_view(
+        #     view_model=vm,
+        #     on_parse_links_clicked=self.on_parse_links_clicked,
+        #     on_content_clicked=self.on_content_clicked,
+        #     on_remove_content_clicked=self.on_remove_content_clicked,
+        #     on_generate_summary_clicked=self.on_generate_summary_clicked,
+        #     on_summary_save_clicked=self.on_summary_save_clicked,
+        #     on_sort_changed=self.on_sort_changed,
+        #     on_limit_changed=self.on_limit_changed,
+        #     on_prompt_template_changed=self.on_prompt_template_changed,
+        #     on_classification_group_changed=self.on_classification_group_changed,
+        #     on_run_analysis_clicked=self.on_run_analysis_clicked,
+        #     on_analysis_status_polled=self.on_analysis_status_polled,
+        # )
+
+
 
     # ----------------------------------------------------------------
 

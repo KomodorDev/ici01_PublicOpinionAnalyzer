@@ -8,7 +8,7 @@ This module renders the full Prompt Template UI and wires user interactions
 to controller callbacks. It is intentionally **UI-only**:
 - No file I/O or business logic lives here.
 - All stateful operations are delegated to the controller layer.
-- The controller returns serializable dict payloads suitable for form fields.
+- The controller returns ViewModels suitable for form fields.
 
 Core responsibilities
 ---------------------
@@ -25,8 +25,11 @@ Design notes
 """
 
 from __future__ import annotations
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 import gradio as gr
+
+from models.view_models.prompt_template.prompt_view_model import PromptTemplateViewModel
+from models.view_models.prompt_template.prompt_template_detail_view_model import PromptTemplateDetailViewModel
 
 CREATE_SENTINEL = "➕ Create new template…"
 
@@ -38,32 +41,23 @@ class PromptTemplateView:
 
     Parameters (via `render_prompt_template_view`)
     ----------------------------------------------
-    platform_choices : List[str]
-        All selectable platforms (enum string values).
-    selected_platform : str
-        Currently selected platform value.
-    template_name_choices : List[str]
-        Template names for the selected platform (without `.json`).
-    selected_template : Optional[Dict]
-        The currently selected template converted to a view dict, or `None`.
-        Expected keys when present:
-            - name, description, system_prompt, user_prompt, last_updated
-            - placeholders_required (List[str])
-            - placeholders_optional (List[str])
-    on_platform_changed : Callable[[str], tuple[List[str], Optional[Dict]]]
-        Controller callback. Given a platform string, returns:
-            (template_names_for_platform, first_template_or_rules_dict)
-        The second item may be a full template dict or a "rules-only" dict
-        containing `placeholders_required`/`placeholders_optional`.
-    on_template_changed : Callable[[str, str], Optional[Dict]]
+    view_model : PromptTemplateViewModel
+        The complete view state including platform choices, template names, and selected template.
+        
+    on_platform_changed : Callable[[str], PromptTemplateViewModel]
+        Controller callback. Given a platform string, returns updated PromptTemplateViewModel.
+        
+    on_template_changed : Callable[[str, str], Optional[PromptTemplateDetailViewModel]]
         Controller callback. Given (platform_str, template_name), returns
-        the selected template as a view dict (or None).
+        the selected template as a PromptTemplateDetailViewModel (or None).
+        
     on_save_clicked : Optional[Callable[[Dict, bool], Dict]]
         Controller callback. Given (template_dict, overwrite=True) returns
-        `{"ok": bool, "message": str, "saved": Optional[Dict]}`.
-    on_delete_clicked : Optional[Callable[[str, str], Dict]]
+        `{"ok": bool, "message": str, "saved": Optional[PromptTemplateDetailViewModel]}`.
+        
+    on_delete_clicked : Optional[Callable[[str, str], PromptTemplateViewModel]]
         Controller callback. Given (platform_str, template_name) returns
-        `{"ok": bool, "message": str}`.
+        updated PromptTemplateViewModel.
 
     Behavior
     --------
@@ -78,14 +72,11 @@ class PromptTemplateView:
     def render_prompt_template_view(
         self,
         *,
-        platform_choices: List[str],
-        selected_platform: str,
-        template_name_choices: List[str],
-        selected_template: Optional[Dict],
-        on_platform_changed: Callable[[str], tuple[List[str], Optional[Dict]]],
-        on_template_changed: Callable[[str, str], Optional[Dict]],
+        view_model: PromptTemplateViewModel,
+        on_platform_changed: Callable[[str], PromptTemplateViewModel],
+        on_template_changed: Callable[[str, str], Optional[PromptTemplateDetailViewModel]],
         on_save_clicked: Optional[Callable[[Dict, bool], Dict]] = None,
-        on_delete_clicked: Optional[Callable[[str, str], Dict]] = None,
+        on_delete_clicked: Optional[Callable[[str, str], PromptTemplateViewModel]] = None,
     ) -> None:
         """
         Render the complete Prompt Template management view using Gradio components.
@@ -99,19 +90,16 @@ class PromptTemplateView:
         # ================================================================
         # HELPERS
         # ================================================================
-        def _tpl_to_fields(tpl: Optional[Dict]):
-            """Return tuple of fields to populate textboxes.
-               Note: required/optional placeholders come from controller/service,
-               not from the template payload itself.
-            """
-            if not tpl:
+        def _tpl_to_fields(vm: Optional[PromptTemplateDetailViewModel]):
+            """Return tuple of fields to populate textboxes."""
+            if not vm:
                 return ("", "", "", "", "-")
             return (
-                tpl.get("name", ""),
-                tpl.get("description", "") or "",
-                tpl.get("system_prompt", "") or "",
-                tpl.get("user_prompt", "") or "",
-                tpl.get("last_updated", "-"),
+                vm.name,
+                vm.description or "",
+                vm.system_prompt or "",
+                vm.user_prompt or "",
+                vm.last_updated or "-",
             )
 
         def _fields_to_dict(plat, nm, ds, sp, up, lu) -> Dict:
@@ -129,11 +117,11 @@ class PromptTemplateView:
         # ================================================================
         # INITIAL STATE
         # ================================================================
-        initial_names = [CREATE_SENTINEL] + list(template_name_choices or [])
+        initial_names = [CREATE_SENTINEL] + list(view_model.template_name_choices or [])
         initial_selected_name = (
-            selected_template["name"] if selected_template else CREATE_SENTINEL
+            view_model.selected_template.name if view_model.selected_template and view_model.selected_template.name else CREATE_SENTINEL
         )
-        init_name, init_desc, init_system, init_user, init_lastupd = _tpl_to_fields(selected_template)
+        init_name, init_desc, init_system, init_user, init_lastupd = _tpl_to_fields(view_model.selected_template)
 
         # ================================================================
         # LAYOUT
@@ -144,11 +132,11 @@ class PromptTemplateView:
             with gr.Row():
                 platform_dd = gr.Dropdown(
                     label="Platform",
-                    choices=platform_choices,
+                    choices=view_model.platform_choices,
                     value=(
-                        selected_platform
-                        if selected_platform in platform_choices
-                        else (platform_choices[0] if platform_choices else None)
+                        view_model.selected_platform
+                        if view_model.selected_platform in view_model.platform_choices
+                        else (view_model.platform_choices[0] if view_model.platform_choices else None)
                     ),
                     interactive=True,
                     scale=1,
@@ -182,13 +170,13 @@ class PromptTemplateView:
                 with gr.Column(scale=1):
                     req_ph_tb = gr.Textbox(
                         label="Required Placeholders (read-only)",
-                        value="\n".join(selected_template.get("placeholders_required", [])) if selected_template else "",
+                        value="\n".join(view_model.selected_template.placeholders_required) if view_model.selected_template else "",
                         lines=18,
                         interactive=False,
                     )
                     opt_ph_tb = gr.Textbox(
                         label="Optional Placeholders (read-only)",
-                        value="\n".join(selected_template.get("placeholders_optional", [])) if selected_template else "",
+                        value="\n".join(view_model.selected_template.placeholders_optional) if view_model.selected_template else "",
                         lines=18,
                         interactive=False,
                     )
@@ -223,12 +211,12 @@ class PromptTemplateView:
         # ----------------------------------------------------------------
         def _handle_platform_change(plat: str):
             """Refresh template names, current template (if any), and placeholder panels."""
-            names, tpl_or_rules = on_platform_changed(plat)
-            choices = [CREATE_SENTINEL] + (names or [])
+            new_vm = on_platform_changed(plat)
+            choices = [CREATE_SENTINEL] + (new_vm.template_name_choices or [])
 
-            nm, ds, sp, up, lu = _tpl_to_fields(tpl_or_rules)
-            req = "\n".join((tpl_or_rules or {}).get("placeholders_required", []) or [])
-            opt = "\n".join((tpl_or_rules or {}).get("placeholders_optional", []) or [])
+            nm, ds, sp, up, lu = _tpl_to_fields(new_vm.selected_template)
+            req = "\n".join((new_vm.selected_template.placeholders_required if new_vm.selected_template else []) or [])
+            opt = "\n".join((new_vm.selected_template.placeholders_optional if new_vm.selected_template else []) or [])
 
             desired = nm or CREATE_SENTINEL
             value = desired if (desired in choices) else choices[0]  # Ensure selected value exists in choices, otherwise default to first choice
@@ -266,9 +254,11 @@ class PromptTemplateView:
         def _handle_template_change(plat: str, tpl_name: str):
             if tpl_name == CREATE_SENTINEL:
                 # fetch platform rules so required/optional boxes are populated in "create" mode
-                _, tpl_rules = on_platform_changed(plat)  # <- reuse existing callback
-                req = "\n".join((tpl_rules or {}).get("placeholders_required", []) or [])
-                opt = "\n".join((tpl_rules or {}).get("placeholders_optional", []) or [])
+                # Reuse on_platform_changed to get the "Create" mode VM (which has empty fields but correct rules)
+                new_vm = on_platform_changed(plat)  # <- reuse existing callback which returns VM
+                
+                req = "\n".join((new_vm.selected_template.placeholders_required if new_vm.selected_template else []) or [])
+                opt = "\n".join((new_vm.selected_template.placeholders_optional if new_vm.selected_template else []) or [])
                 del_enabled = False
                 return (
                     gr.update(value=""),  # name
@@ -282,10 +272,10 @@ class PromptTemplateView:
                 )
 
             # existing branch for loading an actual template
-            tpl = on_template_changed(plat, tpl_name)
-            nm, ds, sp, up, lu = _tpl_to_fields(tpl)
-            req = "\n".join(tpl.get("placeholders_required", []) or [])
-            opt = "\n".join(tpl.get("placeholders_optional", []) or [])
+            vm = on_template_changed(plat, tpl_name)
+            nm, ds, sp, up, lu = _tpl_to_fields(vm)
+            req = "\n".join((vm.placeholders_required if vm else []) or [])
+            opt = "\n".join((vm.placeholders_optional if vm else []) or [])
             del_enabled = True
             return (
                 gr.update(value=nm),
@@ -316,7 +306,7 @@ class PromptTemplateView:
 
         # ----------------------------------------------------------------
         def _handle_save(plat, tpl_name_sel, nm, ds, sp, up, lu):
-            """Send payload to controller; controller responds with 'saved' dict including placeholders."""
+            """Send payload to controller; controller responds with 'saved' ViewModel including placeholders."""
             if on_save_clicked is None:
                 gr.Info("Save not wired.")
                 return (gr.update(),) * 9
@@ -327,15 +317,17 @@ class PromptTemplateView:
                 gr.Warning(status.get("message", "Save failed."))
                 return (gr.update(),) * 9
 
-            saved = status.get("saved") or {}
+            saved_vm = status.get("saved") # Expecting PromptTemplateDetailViewModel
             # refresh list of names for this platform
-            names, _ = on_platform_changed(plat)
-            choices = [CREATE_SENTINEL] + names
-            new_value = saved.get("name") or tpl_name_sel or CREATE_SENTINEL
+            # Ideally on_save_clicked should return full VM if list changed, but here we reuse on_platform_changed to refresh list
+            refreshed_vm = on_platform_changed(plat)
+            choices = [CREATE_SENTINEL] + (refreshed_vm.template_name_choices or [])
+            
+            new_value = saved_vm.name if saved_vm else (tpl_name_sel or CREATE_SENTINEL)
 
-            nm2, ds2, sp2, up2, lu2 = _tpl_to_fields(saved)
-            req2 = "\n".join(saved.get("placeholders_required", []) or [])
-            opt2 = "\n".join(saved.get("placeholders_optional", []) or [])
+            nm2, ds2, sp2, up2, lu2 = _tpl_to_fields(saved_vm)
+            req2 = "\n".join((saved_vm.placeholders_required if saved_vm else []) or [])
+            opt2 = "\n".join((saved_vm.placeholders_optional if saved_vm else []) or [])
             gr.Success(status.get("message", "Saved."))
             del_enabled = new_value != CREATE_SENTINEL
 
@@ -395,18 +387,39 @@ class PromptTemplateView:
                     gr.update(interactive=False),
                 )
 
-            status = on_delete_clicked(plat, tpl_name)
-            if not status.get("ok"):
-                gr.Warning(status.get("message", "Delete failed."))
-                return (gr.update(),) * 8
+            # returns PromptTemplateViewModel
+            new_vm = on_delete_clicked(plat, tpl_name)
+            
+            if new_vm.error_message:
+                gr.Warning(new_vm.error_message)
+                # Return unchanged state if error
+                return (gr.update(),) * 9
 
-            names, _ = on_platform_changed(plat)
-            choices = [CREATE_SENTINEL] + names
-            gr.Success(status.get("message", "Deleted."))
+            if new_vm.info_message:
+                gr.Success(new_vm.info_message)
+
+            choices = [CREATE_SENTINEL] + (new_vm.template_name_choices or [])
+            
+            # After delete, controller logic selects first available or dummy.
+            # new_vm.selected_template is populated.
+            sel_vm = new_vm.selected_template
+            nm, ds, sp, up, lu = _tpl_to_fields(sel_vm)
+            req = "\n".join((sel_vm.placeholders_required if sel_vm else []) or [])
+            opt = "\n".join((sel_vm.placeholders_optional if sel_vm else []) or [])
+            
+            new_val = sel_vm.name if sel_vm and sel_vm.name else CREATE_SENTINEL
+            del_enabled = new_val != CREATE_SENTINEL
+
             return (
-                gr.update(choices=choices, value=CREATE_SENTINEL),  # template_dd
-                *(_clear_fields()),
-                gr.update(interactive=False),
+                gr.update(choices=choices, value=new_val),  # template_dd
+                gr.update(value=nm),
+                gr.update(value=ds),
+                gr.update(value=sp),
+                gr.update(value=up),
+                gr.update(value=req),
+                gr.update(value=opt),
+                gr.update(value=lu),
+                gr.update(interactive=del_enabled),
             )
 
         delete_btn.click( # pylint: disable=no-member
