@@ -46,7 +46,7 @@ def create_comment_classification_node(
 
         model_name = client.model_name
         total_comments = len(comments)
-        
+
         # mark as RUNNING
         model_run_progress.status = TaskStatusEnum.RUNNING
         model_run_progress.current_comment = 0
@@ -94,7 +94,7 @@ def create_comment_classification_node(
                         print("------ END OF CONVERSATION ------\n")
 
                         api_result = client.invoke(conversation)
-                        
+
                         # 🔍 DEBUG: print raw model response
                         print("\n🔵 RAW MODEL RESPONSE:")
                         print(api_result)
@@ -170,7 +170,7 @@ def create_comment_classification_node(
                         success = True
                         model_run_progress.current_comment = idx
                         model_run_progress.progress = int(idx * 100 / total_comments)
-                
+
                     finally:
                         # This *always* runs if we acquired
                         if rate_limiter:
