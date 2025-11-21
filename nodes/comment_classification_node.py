@@ -177,9 +177,7 @@ def create_comment_classification_node(
                             rate_limiter.release()
 
                 except Exception as e:
-                    # Any exception: release limiter, count attempt, maybe retry
-                    if rate_limiter:
-                        rate_limiter.release()
+                    # Any exception: count attempt, maybe retry
                     attempts += 1
 
                     model_run_progress.status = TaskStatusEnum.ERROR
