@@ -102,6 +102,58 @@ class PromptTemplateController:
             .replace("+00:00", "Z"),
         )
 
+    # ----------------------------------------------------------------
+    def _build_view_model_for_platform(
+        self,
+        platform: PlatformEnum,
+        *,
+        info_message: Optional[str] = None,
+        error_message: Optional[str] = None,
+    ) -> PromptTemplateViewModel:
+        """
+        Construct the full PromptTemplateViewModel for a given platform,
+        optionally including status messages.
+        """
+        # 1) Load template names for this platform
+        names = self.prompt_template_service.list_all_prompt_template_names(platform)
+
+        # 2) Pick the first template (if any) otherwise build a "create mode" VM
+        selected_vm: Optional[PromptTemplateDetailViewModel] = None
+        if names:
+            first_name = names[0]
+            try:
+                tpl = self.prompt_template_service.load_prompt_template(platform, first_name)
+                selected_vm = self._build_detail_view_model(tpl)
+            except Exception as e:
+                print(
+                    f"[WARN] load first template '{first_name}' for {platform.value} failed: {e}"
+                )
+
+        if not selected_vm:
+            selected_vm = PromptTemplateDetailViewModel(
+                name="",
+                platform=str(platform),
+                description="",
+                system_prompt="",
+                user_prompt="",
+                placeholders_required=self.prompt_template_service.get_required_placeholders(
+                    platform
+                ),
+                placeholders_optional=self.prompt_template_service.get_optional_placeholders(
+                    platform
+                ),
+                last_updated="-",
+            )
+
+        return PromptTemplateViewModel(
+            platform_choices=PlatformEnum.to_list(),
+            selected_platform=str(platform),
+            template_name_choices=names,
+            selected_template=selected_vm,
+            info_message=info_message,
+            error_message=error_message,
+        )
+
     # ================================================================
     # Callbacks wired by the view
     # ================================================================
@@ -118,47 +170,7 @@ class PromptTemplateController:
         """
 
         platform = PlatformEnum.from_str(platform_str)
-
-        # Get all template names for this platform
-        names = self.prompt_template_service.list_all_prompt_template_names(platform)
-        
-        selected_vm: Optional[PromptTemplateDetailViewModel] = None
-
-        # If we have templates, load the first one
-        if names:
-            first = names[0]
-            try:
-                tpl = self.prompt_template_service.load_prompt_template(platform, first)
-                selected_vm = self._build_detail_view_model(tpl)
-            except Exception as e:
-                # degrade gracefully to rules-only if the first template fails to load
-                print(
-                    f"[WARN] load first template '{first}' for {platform.value} failed: {e}"
-                )
-
-        # no templates (or failed to load): construct a "dummy" VM for the Create mode that contains the rules
-        if not selected_vm:
-            selected_vm = PromptTemplateDetailViewModel(
-                name="",
-                platform=str(platform),
-                description="",
-                system_prompt="",
-                user_prompt="",
-                placeholders_required=self.prompt_template_service.get_required_placeholders(
-                    platform
-                ),
-                placeholders_optional=self.prompt_template_service.get_optional_placeholders(
-                    platform
-                ),
-                last_updated="-",
-            )
-            
-        return PromptTemplateViewModel(
-            platform_choices=PlatformEnum.to_list(), # Keep choices consistent
-            selected_platform=platform_str,
-            template_name_choices=names,
-            selected_template=selected_vm
-        )
+        return self._build_view_model_for_platform(platform)
 
     # ----------------------------------------------------------------
     def on_template_changed(
@@ -223,46 +235,13 @@ class PromptTemplateController:
         Returns: Updated PromptTemplateViewModel reflecting the deletion.
         """
         plat = PlatformEnum.from_str(platform_str)
-        
-        # Helper to rebuild the view model for current platform (similar to on_platform_changed)
-        def _refresh_view_model(info_msg: Optional[str] = None, error_msg: Optional[str] = None):
-            # Refresh list
-            names = self.prompt_template_service.list_all_prompt_template_names(plat)
-            
-            # Select first available or dummy
-            selected_vm = None
-            if names:
-                try:
-                    tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
-                    selected_vm = self._build_detail_view_model(tpl)
-                except Exception:
-                    print(f"[WARN] load first template '{names[0]}' for {platform_str} failed: {e}")
-            
-            if not selected_vm:
-                selected_vm = PromptTemplateDetailViewModel(
-                    name="",
-                    platform=str(plat),
-                    description="",
-                    system_prompt="",
-                    user_prompt="",
-                    placeholders_required=self.prompt_template_service.get_required_placeholders(plat),
-                    placeholders_optional=self.prompt_template_service.get_optional_placeholders(plat),
-                    last_updated="-",
-                )
-
-            return PromptTemplateViewModel(
-                platform_choices=PlatformEnum.to_list(),
-                selected_platform=platform_str,
-                template_name_choices=names,
-                selected_template=selected_vm,
-                info_message=info_msg,
-                error_message=error_msg
-            )
 
         try:
             # No template selected
             if not template_name:
-                return _refresh_view_model(error_msg="No template selected.")
+                return self._build_view_model_for_platform(
+                    plat, error_message="No template selected."
+                )
 
             # Call Service to delete
             deleted = self.prompt_template_service.delete_prompt_template(
@@ -271,14 +250,20 @@ class PromptTemplateController:
 
             # Return status
             if deleted:
-                return _refresh_view_model(info_msg=f"Deleted: {platform_str}/{template_name}.json")
+                return self._build_view_model_for_platform(
+                    plat, info_message=f"Deleted: {platform_str}/{template_name}.json"
+                )
             
             # Return failure - not found
-            return _refresh_view_model(error_msg="Template did not exist.")
+            return self._build_view_model_for_platform(
+                plat, error_message="Template did not exist."
+            )
 
         # Return failure with error message
         except Exception as e:
-            return _refresh_view_model(error_msg=f"Delete failed: {e}")
+            return self._build_view_model_for_platform(
+                plat, error_message=f"Delete failed: {e}"
+            )
 
     # ================================================================
     # Entrypoint
@@ -298,41 +283,8 @@ class PromptTemplateController:
         # Choose which platform to show on startup
         plat = default_platform or list(PlatformEnum)[0]
 
-        # List of all available platforms (for the dropdown)
-        platforms = PlatformEnum.to_list()
-
-        # List all templates for the selected/default platform
-        names = self.prompt_template_service.list_all_prompt_template_names(plat)
-
-        # Load the first template (if any) so the view shows something populated on load
-        selected_vm: Optional[PromptTemplateDetailViewModel] = None
-        if names:
-            try:
-                tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
-                selected_vm = self._build_detail_view_model(tpl)
-            except Exception:
-                print(f"[WARN] load first template '{names[0]}' for {plat} failed: {e}")
-        
-        # Fallback if no templates or error loading
-        if not selected_vm:
-            selected_vm = PromptTemplateDetailViewModel(
-                name="",
-                platform=str(plat),
-                description="",
-                system_prompt="",
-                user_prompt="",
-                placeholders_required=self.prompt_template_service.get_required_placeholders(plat),
-                placeholders_optional=self.prompt_template_service.get_optional_placeholders(plat),
-                last_updated="-",
-            )
-
-        # Construct the full ViewModel
-        vm = PromptTemplateViewModel(
-            platform_choices=platforms,
-            selected_platform=str(plat),
-            template_name_choices=names,
-            selected_template=selected_vm
-        )
+        # Construct the full ViewModel via shared helper
+        vm = self._build_view_model_for_platform(plat)
 
         # Render the view with current state and callback bindings
         self.prompt_template_view.render_prompt_template_view(
