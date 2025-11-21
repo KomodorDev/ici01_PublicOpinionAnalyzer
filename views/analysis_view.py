@@ -1302,14 +1302,23 @@ class AnalysisView:
             """
             Called by the timer every tick.
             Fetches latest AnalysisViewModel and turns it into Markdown.
+
+            Returns a tuple: (markdown_str, gr.update(active=...)). The view
+            will use the `analysis_running` flag provided by the controller
+            to decide whether the timer should remain active. When
+            `analysis_running` is False we return `gr.update(active=False)`
+            so the timer deactivates itself.
             """
             vm = on_analysis_status_polled()
-            return _analysis_runs_to_markdown(vm)
+            md = _analysis_runs_to_markdown(vm)
+            # vm.analysis_running is authoritative; if missing, default to False
+            running = bool(getattr(vm, "analysis_running", False))
+            return md, gr.update(active=running)
 
         analysis_timer.tick(
             fn=_poll_analysis_status,
             inputs=None,
-            outputs=analysis_progress_md,
+            outputs=[analysis_progress_md, analysis_timer],
         )
 
         # ================================================================
@@ -1348,9 +1357,7 @@ class AnalysisView:
                         base = f"`{label}` {status_str} {progress_str}".strip()
 
                         if m.error:
-                            model_bits.append(
-                                f"{base}<br><sub>⚠️ {m.error}</sub>"
-                            )
+                            model_bits.append(f"{base}<br><sub>⚠️ {m.error}</sub>")
                         else:
                             model_bits.append(base)
 
