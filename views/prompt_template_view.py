@@ -119,7 +119,9 @@ class PromptTemplateView:
         # ================================================================
         initial_names = [CREATE_SENTINEL] + list(view_model.template_name_choices or [])
         initial_selected_name = (
-            view_model.selected_template.name if view_model.selected_template and view_model.selected_template.name else CREATE_SENTINEL
+            view_model.selected_template.name 
+            if view_model.selected_template and view_model.selected_template.name 
+            else CREATE_SENTINEL
         )
         init_name, init_desc, init_system, init_user, init_lastupd = _tpl_to_fields(view_model.selected_template)
 
@@ -254,7 +256,7 @@ class PromptTemplateView:
         def _handle_template_change(plat: str, tpl_name: str):
             if tpl_name == CREATE_SENTINEL:
                 # fetch platform rules so required/optional boxes are populated in "create" mode
-                # Reuse on_platform_changed to get the "Create" mode VM (which has empty fields but correct rules)
+                # Reuse on_platform_changed to reload the platform state, including placeholder rules for "create" mode (fields may not be empty)
                 new_vm = on_platform_changed(plat)  # <- reuse existing callback which returns VM
                 
                 req = "\n".join(new_vm.selected_template.placeholders_required if new_vm.selected_template else [])

@@ -48,7 +48,7 @@ writes via Service → View re-renders.
 """
 
 from __future__ import annotations
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 from datetime import timezone
 from enums.platform_enum import PlatformEnum
 from models.domain import PromptTemplate
@@ -76,6 +76,27 @@ class PromptTemplateController:
     # Helpers
     # ================================================================
     # ----------------------------------------------------------------
+    def _build_error_view_model(
+        self, 
+        platform: Optional[PlatformEnum], 
+        error_message: str
+    ) -> PromptTemplateViewModel:
+        """
+        Build a ViewModel with an error message for a given platform.
+        
+        If platform is None, falls back to the first available platform.
+        
+        Args:
+            platform: Platform to build ViewModel for, or None for fallback
+            error_message: Error message to include in the ViewModel
+            
+        Returns:
+            PromptTemplateViewModel with error_message set
+        """
+        target_platform = platform if platform else list(PlatformEnum)[0]
+        return self._build_view_model_for_platform(target_platform, error_message=error_message)
+    
+    # ----------------------------------------------------------------
     def _build_detail_view_model(self, t: PromptTemplate) -> PromptTemplateDetailViewModel:
         """
         Build the ViewModel shown in the view for a selected PromptTemplate.
@@ -91,9 +112,9 @@ class PromptTemplateController:
         return PromptTemplateDetailViewModel(
             name=t.name,
             platform=str(t.platform),
-            description=t.description or "",
-            system_prompt=t.system_prompt or "",
-            user_prompt=t.user_prompt or "",
+            description=t.description if t.description else None,
+            system_prompt=t.system_prompt if t.system_prompt else None,
+            user_prompt=t.user_prompt if t.user_prompt else None,
             placeholders_required=req,
             placeholders_optional=opt,
             placeholders_found=found,
@@ -133,16 +154,16 @@ class PromptTemplateController:
             selected_vm = PromptTemplateDetailViewModel(
                 name="",
                 platform=str(platform),
-                description="",
-                system_prompt="",
-                user_prompt="",
+                description=None,
+                system_prompt=None,
+                user_prompt=None,
                 placeholders_required=self.prompt_template_service.get_required_placeholders(
                     platform
                 ),
                 placeholders_optional=self.prompt_template_service.get_optional_placeholders(
                     platform
                 ),
-                last_updated="-",
+                last_updated=None,
             )
 
         return PromptTemplateViewModel(
@@ -234,25 +255,11 @@ class PromptTemplateController:
 
         # Return failure with error message
         except ValueError as e:
-            # On error, build ViewModel for the platform if we can extract it
-            if platform:
-                return self._build_view_model_for_platform(platform, error_message=str(e))
-            else:
-                # Fallback: return ViewModel for first platform if we can't determine platform
-                plat = list(PlatformEnum)[0]
-                return self._build_view_model_for_platform(plat, error_message=str(e))
+            return self._build_error_view_model(platform, str(e))
         except FileExistsError as e:
-            if platform:
-                return self._build_view_model_for_platform(platform, error_message=str(e))
-            else:
-                plat = list(PlatformEnum)[0]
-                return self._build_view_model_for_platform(plat, error_message=str(e))
+            return self._build_error_view_model(platform, str(e))
         except Exception as e:
-            if platform:
-                return self._build_view_model_for_platform(platform, error_message=f"Save failed: {e}")
-            else:
-                plat = list(PlatformEnum)[0]
-                return self._build_view_model_for_platform(plat, error_message=f"Save failed: {e}")
+            return self._build_error_view_model(platform, f"Save failed: {e}")
 
     # ----------------------------------------------------------------
     def on_delete_clicked(self, platform_str: str, template_name: str) -> PromptTemplateViewModel:

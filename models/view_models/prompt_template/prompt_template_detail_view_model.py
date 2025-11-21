@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 @dataclass
 class PromptTemplateDetailViewModel:
@@ -9,10 +9,10 @@ class PromptTemplateDetailViewModel:
     """
     name: str = ""
     platform: str = ""
-    description: str = ""
-    system_prompt: str = ""
-    user_prompt: str = ""
+    description: Optional[str] = None
+    system_prompt: Optional[str] = None
+    user_prompt: Optional[str] = None
     placeholders_required: List[str] = field(default_factory=list)
     placeholders_optional: List[str] = field(default_factory=list)
     placeholders_found: List[str] = field(default_factory=list)
-    last_updated: str = "" # ISO 8601 format
+    last_updated: Optional[str] = None  # ISO 8601 format
