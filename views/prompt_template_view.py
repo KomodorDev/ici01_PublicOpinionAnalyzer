@@ -372,19 +372,17 @@ class PromptTemplateView:
             if on_delete_clicked is None:
                 gr.Info("Delete not wired.")
                 return (
-                    gr.update(),
-                    *(_clear_fields()),
-                    gr.update(choices=[CREATE_SENTINEL], value=CREATE_SENTINEL),
-                    gr.update(interactive=False),
+                    gr.update(choices=[CREATE_SENTINEL], value=CREATE_SENTINEL),  # template_dd
+                    *(_clear_fields()),  # 7 elements: name, desc, system, user, req, opt, lastupd
+                    gr.update(interactive=False),  # delete_btn
                 )
 
             if not tpl_name or tpl_name == CREATE_SENTINEL:
                 gr.Warning("No template selected to delete.")
                 return (
-                    gr.update(),
-                    *(_clear_fields()),
-                    gr.update(choices=[CREATE_SENTINEL], value=CREATE_SENTINEL),
-                    gr.update(interactive=False),
+                    gr.update(choices=[CREATE_SENTINEL], value=CREATE_SENTINEL),  # template_dd
+                    *(_clear_fields()),  # 7 elements: name, desc, system, user, req, opt, lastupd
+                    gr.update(interactive=False),  # delete_btn
                 )
 
             # returns PromptTemplateViewModel

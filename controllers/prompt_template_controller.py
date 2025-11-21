@@ -226,7 +226,7 @@ class PromptTemplateController:
         
         # Helper to rebuild the view model for current platform (similar to on_platform_changed)
         def _refresh_view_model(info_msg: Optional[str] = None, error_msg: Optional[str] = None):
-             # Refresh list
+            # Refresh list
             names = self.prompt_template_service.list_all_prompt_template_names(plat)
             
             # Select first available or dummy
@@ -236,7 +236,7 @@ class PromptTemplateController:
                     tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
                     selected_vm = self._build_detail_view_model(tpl)
                 except Exception:
-                    pass
+                    print(f"[WARN] load first template '{names[0]}' for {platform_str} failed: {e}")
             
             if not selected_vm:
                 selected_vm = PromptTemplateDetailViewModel(
@@ -311,11 +311,11 @@ class PromptTemplateController:
                 tpl = self.prompt_template_service.load_prompt_template(plat, names[0])
                 selected_vm = self._build_detail_view_model(tpl)
             except Exception:
-                pass
+                print(f"[WARN] load first template '{names[0]}' for {plat} failed: {e}")
         
         # Fallback if no templates or error loading
         if not selected_vm:
-             selected_vm = PromptTemplateDetailViewModel(
+            selected_vm = PromptTemplateDetailViewModel(
                 name="",
                 platform=str(plat),
                 description="",
@@ -342,22 +342,6 @@ class PromptTemplateController:
             on_save_clicked=self.on_save_clicked,
             on_delete_clicked=self.on_delete_clicked,
         )
-        # self.analysis_view.render_analysis_view(
-        #     view_model=vm,
-        #     on_parse_links_clicked=self.on_parse_links_clicked,
-        #     on_content_clicked=self.on_content_clicked,
-        #     on_remove_content_clicked=self.on_remove_content_clicked,
-        #     on_generate_summary_clicked=self.on_generate_summary_clicked,
-        #     on_summary_save_clicked=self.on_summary_save_clicked,
-        #     on_sort_changed=self.on_sort_changed,
-        #     on_limit_changed=self.on_limit_changed,
-        #     on_prompt_template_changed=self.on_prompt_template_changed,
-        #     on_classification_group_changed=self.on_classification_group_changed,
-        #     on_run_analysis_clicked=self.on_run_analysis_clicked,
-        #     on_analysis_status_polled=self.on_analysis_status_polled,
-        # )
-
-
 
     # ----------------------------------------------------------------
 
