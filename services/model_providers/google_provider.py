@@ -5,10 +5,14 @@ google_provider.py
 
 Google AI (Gemini) provider implementation.
 """
+
+import traceback
+
 from typing import List, Optional
 from google import genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from enums import ProviderEnum
 from services.model_providers.base_provider import ModelProvider
 from models.domain import LLMModelInfo
 
@@ -26,7 +30,7 @@ class GoogleProvider(ModelProvider):
             settings_service: SettingsService instance for configuration access.
                             If None, creates a new instance.
         """
-        self.provider_name = "google"
+        self.provider_name = str(ProviderEnum.GOOGLE)
 
         # Use provided settings service or create new one
         if settings_service is None:
@@ -127,13 +131,16 @@ class GoogleProvider(ModelProvider):
                 f"{self.provider_name.title()} not available: {message}"
             )
 
-        return ChatGoogleGenerativeAI(
+        client = ChatGoogleGenerativeAI(
             model=model_name,
             google_api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
             max_output_tokens=kwargs.get("max_tokens", None),
         )
 
+        client.name = f"{self.provider_name}_{model_name}"   # "openai:gpt-4o-mini"
+
+        return client
 
     # ----------------------------------------------------------------
 
@@ -200,6 +207,26 @@ def main():
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )
+        # -----------------------------------------
+        # DEBUG: Print all attributes of the client
+        # -----------------------------------------
+        print("\nDEBUG: ChatGoogleGenerativeAI client attributes")
+        print("type:", type(client))
+
+        # Print __dict__ if available
+        if hasattr(client, "__dict__"):
+            print("\nclient.__dict__:")
+            for k, v in client.__dict__.items():
+                print(f"  {k}: {v}")
+        else:
+            print("\nclient has no __dict__, printing dir() instead:")
+            for attr in dir(client):
+                try:
+                    val = getattr(client, attr)
+                    print(f"  {attr}: {val}")
+                except Exception:
+                    print(f"  {attr}: <error retrieving value>")
+        # -----------------------------------------
 
         # Make a simple request
         response = client.invoke("What is 2+2? Answer with just the number.")
@@ -219,7 +246,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Model inference test FAILED!")
         print(f"   Error: {str(e)}")
-        import traceback
+
         traceback.print_exc()
 
     print("\n" + "="*60)

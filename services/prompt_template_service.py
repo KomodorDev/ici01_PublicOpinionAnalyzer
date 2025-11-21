@@ -89,7 +89,9 @@ class PromptTemplateService:
         self.prompt_template_repository = PromptTemplateRepository()
 
         # Platform rules (inline for now)
-        self._rx = re.compile(r"\[([A-Za-z_][A-Za-z0-9_]*)\]")  # Matches placeholders like [PLACEHOLDER], [SOME_VAR], etc.
+        self._rx = re.compile(
+            r"\[([A-Za-z_][A-Za-z0-9_]*)\]"
+        )  # Matches placeholders like [PLACEHOLDER], [SOME_VAR], etc.
 
         self._required_placeholders: Dict[PlatformEnum, List[PlaceholderEnum]] = {
             PlatformEnum.YOUTUBE: [
@@ -99,8 +101,7 @@ class PromptTemplateService:
                 PlaceholderEnum.VIDEOCONTEXT,
                 PlaceholderEnum.TARGETCOMMENT,
             ],
-            PlatformEnum.TWITTER: [PlaceholderEnum.OUTPUTFORMAT],
-            PlatformEnum.REDDIT:  [PlaceholderEnum.OUTPUTFORMAT],
+            PlatformEnum.REDDIT: [PlaceholderEnum.OUTPUTFORMAT],
         }
 
         self._optional_placeholders: Dict[PlatformEnum, List[PlaceholderEnum]] = {
@@ -108,8 +109,7 @@ class PromptTemplateService:
                 PlaceholderEnum.THREADCOMMENTS,
                 PlaceholderEnum.TAGGEDCOMMENTS,
             ],
-            PlatformEnum.TWITTER: [PlaceholderEnum.LANG],
-            PlatformEnum.REDDIT:  [],
+            PlatformEnum.REDDIT: [],
         }
 
     # ================================================================
@@ -240,7 +240,9 @@ class PromptTemplateService:
         return sorted(found)
 
     # ----------------------------------------------------------------
-    def validate_prompt_template(self, tpl: PromptTemplate, *, strict_unknown=False) -> None:
+    def validate_prompt_template(
+        self, tpl: PromptTemplate, *, strict_unknown=False
+    ) -> None:
         """Validate the prompt template against its platform's requirements."""
 
         # If mandatory fields are missing, raise error
@@ -267,9 +269,12 @@ class PromptTemplateService:
             allowed = req | set(self.get_optional_placeholders(tpl.platform))
             unknown = [p for p in sorted(found) if p not in allowed]
             if unknown:
-                raise ValueError(f"Unknown placeholders not allowed: {', '.join(unknown)}")
+                raise ValueError(
+                    f"Unknown placeholders not allowed: {', '.join(unknown)}"
+                )
 
     # ----------------------------------------------------------------
+
 
 ##################################################################
 

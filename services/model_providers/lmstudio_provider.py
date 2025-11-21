@@ -5,10 +5,13 @@ lmstudio_provider.py
 
 Local LM Studio provider — OpenAI-compatible API running on localhost.
 """
+import traceback
 
 from typing import List, Optional
 from langchain_openai import ChatOpenAI
 import requests
+
+from enums import ProviderEnum
 from models.domain import LLMModelInfo
 from services.model_providers.base_provider import ModelProvider
 
@@ -26,7 +29,7 @@ class LMStudioProvider(ModelProvider):
             settings_service: SettingsService instance for configuration access.
                             If None, creates a new instance.
         """
-        self.provider = "lmstudio"
+        self.provider_name = str(ProviderEnum.LMSTUDIO)
 
         # Use provided settings service or create new one
         if settings_service is None:
@@ -39,7 +42,7 @@ class LMStudioProvider(ModelProvider):
     @property
     def base_url(self):
         """Always get fresh URL from config."""
-        return self.settings_service.get_provider_url(self.provider)
+        return self.settings_service.get_provider_url(self.provider_name)
 
     # ----------------------------------------------------------------
     def test_connection(self, api_key: str | None = None) -> tuple[bool, str]:
@@ -97,7 +100,7 @@ class LMStudioProvider(ModelProvider):
                 models.append(
                     LLMModelInfo(
                         name=model_id,
-                        provider=self.provider,
+                        provider=self.provider_name,
                         display_name=f"{model_id} (local)",
                         description=model.get("description", ""),
                         context_window=model.get("context_length"),
@@ -137,7 +140,7 @@ class LMStudioProvider(ModelProvider):
     def create_llm_client(self, model_name: str, **kwargs):
         """Create a LangChain ChatOpenAI client for LM Studio."""
 
-        return ChatOpenAI(
+        client = ChatOpenAI(
             base_url=self.base_url,
             api_key="lm-studio",  # Dummy key
             model=model_name,
@@ -145,6 +148,9 @@ class LMStudioProvider(ModelProvider):
             max_tokens=kwargs.get("max_tokens", None),
         )
 
+        client.name = f"{self.provider_name}_{model_name}"   # e.g. "lmstudio:my-local-model"
+
+        return client
     # ----------------------------------------------------------------
 
 ##################################################################
@@ -158,7 +164,7 @@ def main():
 
     # Test with default URL
     provider = LMStudioProvider()
-    print(f"\nProvider: {provider.provider}")
+    print(f"\nProvider: {provider.provider_name}")
     print(f"Base URL: {provider.base_url}")
 
     # Test availability
@@ -187,7 +193,7 @@ def main():
         print(f"\nFound {len(models)} model(s):")
         for i, model in enumerate(models, 1):
             print(f"\n  {i}. {model.name}")
-            print(f"     ID: {model.id}")
+            print(f"     ID: {model.name}")
             print(f"     Provider: {model.provider}")
             print(f"     Context Window: {model.context_window}")
     else:
@@ -216,6 +222,26 @@ def main():
             max_tokens=10
         )
 
+        # -----------------------------------------
+        # DEBUG: Print all attributes of the client
+        # -----------------------------------------
+        print("\nDEBUG: LMStudio client attributes")
+        print("type:", type(client))
+
+        # Print __dict__ if available
+        if hasattr(client, "__dict__"):
+            print("\nclient.__dict__:")
+            for k, v in client.__dict__.items():
+                print(f"  {k}: {v}")
+        else:
+            print("\nclient has no __dict__, printing dir() instead:")
+            for attr in dir(client):
+                try:
+                    val = getattr(client, attr)
+                    print(f"  {attr}: {val}")
+                except Exception:
+                    print(f"  {attr}: <error retrieving value>")
+
         # Make a simple request
         response = client.invoke("What is 2+2? Answer with just the number.")
 
@@ -234,7 +260,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Model inference test FAILED!")
         print(f"   Error: {str(e)}")
-        import traceback
+
         traceback.print_exc()
 
     print("\n" + "="*60)

@@ -374,7 +374,7 @@ class AnalysisView:
             analysis_models_dd = gr.Dropdown(
                 label="Models for analysis",
                 choices=analysis_model_labels,
-                value=[],                # start with nothing selected
+                value=[],  # start with nothing selected
                 multiselect=True,
                 interactive=True,
             )
@@ -394,7 +394,7 @@ class AnalysisView:
 
             # Error panel (starts empty / invisible to user)
             analysis_error_md = gr.Markdown(value="")
-    
+
             # NEW: Progress overview (Markdown table)
             analysis_progress_md = gr.Markdown(
                 value="",
@@ -402,8 +402,8 @@ class AnalysisView:
             )
 
             analysis_timer = gr.Timer(
-                value=1.0,    # interval in seconds
-                active=False  # start inactive; we’ll turn it on after “Run Analysis”
+                value=1.0,  # interval in seconds
+                active=False,  # start inactive; we’ll turn it on after “Run Analysis”
             )
         # ================================================================
         # WIRING
@@ -557,8 +557,12 @@ class AnalysisView:
                     gr.update(value=summary_text_val),  # summary_tb
                     gr.update(value=summary_source_val),  # summary_source_tb
                     gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                    gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                    gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                    gr.update(
+                        choices=pt_choices_with_empty, value=pt_value
+                    ),  # prompt_template_dd
+                    gr.update(
+                        choices=cg_choices_with_empty, value=cg_value
+                    ),  # class_group_dd
                     gr.update(
                         choices=sort_by_choices, value=sort_by_value
                     ),  # sort_by_dd
@@ -589,7 +593,7 @@ class AnalysisView:
                 gr.update(value=""),  # limit_tb
             )
 
-        parse_links_btn.click(
+        parse_links_btn.click(  # pylint: disable=no-member
             fn=_handle_parse_links_clicked,
             inputs=[link_input_tb],
             outputs=[
@@ -758,8 +762,12 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                gr.update(
+                    choices=pt_choices_with_empty, value=pt_value
+                ),  # prompt_template_dd
+                gr.update(
+                    choices=cg_choices_with_empty, value=cg_value
+                ),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -767,7 +775,7 @@ class AnalysisView:
                 gr.update(value=limit_val),  # limit_tb
             )
 
-        content_list_radio.change(
+        content_list_radio.change(  # pylint: disable=no-member
             fn=_handle_content_clicked,
             inputs=[content_list_radio],
             outputs=[
@@ -899,7 +907,6 @@ class AnalysisView:
             if pt_value not in pt_choices:
                 pt_value = PROMPT_SENTINEL
 
-
             # Classification groups
             cg_choices = selected_vm.available_classification_groups or []
             cg_choices_with_empty = [GROUP_SENTINEL] + cg_choices
@@ -954,8 +961,12 @@ class AnalysisView:
                 gr.update(value=summary_text_val),  # summary_tb
                 gr.update(value=summary_source_val),  # summary_source_tb
                 gr.update(choices=sm_choices, value=sm_value),  # summary_model_dd
-                gr.update(choices=pt_choices_with_empty, value=pt_value),  # prompt_template_dd
-                gr.update(choices=cg_choices_with_empty, value=cg_value),  # class_group_dd
+                gr.update(
+                    choices=pt_choices_with_empty, value=pt_value
+                ),  # prompt_template_dd
+                gr.update(
+                    choices=cg_choices_with_empty, value=cg_value
+                ),  # class_group_dd
                 gr.update(choices=sort_by_choices, value=sort_by_value),  # sort_by_dd
                 gr.update(
                     choices=sort_dir_choices, value=sort_dir_value
@@ -963,7 +974,7 @@ class AnalysisView:
                 gr.update(value=limit_val),  # limit_tb
             )
 
-        remove_content_btn.click(
+        remove_content_btn.click(   # pylint: disable=no-member
             fn=_handle_remove_content_clicked,
             inputs=[content_list_radio],  # current selection
             outputs=[
@@ -1043,7 +1054,7 @@ class AnalysisView:
                 gr.update(value="ai"),  # or "AI model", up to you
             )
 
-        generate_summary_btn.click(
+        generate_summary_btn.click( # pylint: disable=no-member
             fn=_handle_generate_summary_clicked,
             inputs=[
                 content_list_radio,  # which content
@@ -1079,7 +1090,7 @@ class AnalysisView:
             # Mark the source as 'manual' (or whatever label you want)
             return gr.update(value="manual")
 
-        save_summary_btn.click(
+        save_summary_btn.click( # pylint: disable=no-member
             fn=_handle_summary_save_clicked,
             inputs=[
                 content_list_radio,  # which content item
@@ -1121,7 +1132,7 @@ class AnalysisView:
                 gr.update(value=summary_source_val),
             )
 
-        cancel_summary_btn.click(
+        cancel_summary_btn.click(   # pylint: disable=no-member
             fn=_handle_summary_cancel_clicked,
             inputs=[content_list_radio],
             outputs=[
@@ -1160,7 +1171,7 @@ class AnalysisView:
             # No UI changes needed here; dropdown already shows the correct value.
             return
 
-        prompt_template_dd.change(
+        prompt_template_dd.change(  # pylint: disable=no-member
             fn=_handle_prompt_template_changed,
             inputs=[content_list_radio, prompt_template_dd],
             outputs=[],
@@ -1194,7 +1205,7 @@ class AnalysisView:
 
             return
 
-        class_group_dd.change(
+        class_group_dd.change(  # pylint: disable=no-member
             fn=_handle_classification_group_changed,
             inputs=[content_list_radio, class_group_dd],
             outputs=[],
@@ -1242,7 +1253,7 @@ class AnalysisView:
             on_limit_changed(platform_enum, content_id, new_limit)
             return
 
-        limit_tb.change(
+        limit_tb.change(    # pylint: disable=no-member
             fn=_handle_limit_changed,
             inputs=[content_list_radio, limit_tb],
             outputs=[],
@@ -1280,11 +1291,10 @@ class AnalysisView:
             gr.Success(message or "Analysis started.")
             return "", gr.update(active=True)
 
-
-        run_analysis_btn.click(
+        run_analysis_btn.click( # pylint: disable=no-member
             fn=_handle_run_analysis,
             inputs=[analysis_models_dd],
-            outputs=[analysis_error_md, analysis_timer]
+            outputs=[analysis_error_md, analysis_timer],
         )
 
         # ---------------------------------------------------------
@@ -1292,15 +1302,23 @@ class AnalysisView:
             """
             Called by the timer every tick.
             Fetches latest AnalysisViewModel and turns it into Markdown.
+
+            Returns a tuple: (markdown_str, gr.update(active=...)). The view
+            will use the `analysis_running` flag provided by the controller
+            to decide whether the timer should remain active. When
+            `analysis_running` is False we return `gr.update(active=False)`
+            so the timer deactivates itself.
             """
             vm = on_analysis_status_polled()
-            return _analysis_runs_to_markdown(vm)
+            md = _analysis_runs_to_markdown(vm)
+            # vm.analysis_running is authoritative; if missing, default to False
+            running = bool(getattr(vm, "analysis_running", False))
+            return md, gr.update(active=running)
 
-
-        analysis_timer.tick(
+        analysis_timer.tick(    # pylint: disable=no-member
             fn=_poll_analysis_status,
             inputs=None,
-            outputs=analysis_progress_md,
+            outputs=[analysis_progress_md, analysis_timer],
         )
 
         # ================================================================
@@ -1312,29 +1330,46 @@ class AnalysisView:
                 return "_No analyses yet._"
 
             lines = [
-                "| Platform | Title | Comments | Models | Export |",
-                "|----------|-------|----------|--------|--------|",
+                "| Platform   | Title     |  Fetch   | Model Runs | Export |",
+                "|------------|-----------|----------|------------|--------|",
             ]
 
             for run in runs:
-                # Convert statuses directly to string
-                comments = str(run.fetch_status)
+                # Direct string conversion of enum values
+                fetch_cell = str(run.fetch_status)
                 export_cell = str(run.export_status)
 
+                # Build models cell
                 if run.model_runs:
                     model_bits = []
                     for m in run.model_runs:
-                        status_str = str(m.status)
                         label = f"{m.provider}:{m.model_name}"
-                        model_bits.append(f"`{label}` {status_str}")
+                        status_str = str(m.status)
+
+                        # "progress" display e.g. (12/42)
+                        progress_str = (
+                            f"({m.current_comment}/{m.total_comments})"
+                            if m.total_comments
+                            else ""
+                        )
+
+                        # Base line: `provider:model` STATUS (x/y)
+                        base = f"`{label}` {status_str} {progress_str}".strip()
+
+                        if m.error:
+                            model_bits.append(f"{base}<br><sub>⚠️ {m.error}</sub>")
+                        else:
+                            model_bits.append(base)
+
                     models_cell = "<br>".join(model_bits)
                 else:
                     models_cell = "_no models_"
 
+                # Escape pipes in title
                 title = run.title.replace("|", "\\|")
 
                 lines.append(
-                    f"| {run.platform} | {title} | {comments} | {models_cell} | {export_cell} |"
+                    f"| {run.platform} | {title} | {fetch_cell} | {models_cell} | {export_cell} |"
                 )
 
             return "\n".join(lines)

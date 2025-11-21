@@ -21,7 +21,6 @@ class PlaceholderEnum(str, Enum):
     TARGETCOMMENT = "TARGETCOMMENT"
     THREADCOMMENTS = "THREADCOMMENTS"
     TAGGEDCOMMENTS = "TAGGEDCOMMENTS"
-    LANG = "LANG"
 
     def __str__(self) -> str:
         return self.value

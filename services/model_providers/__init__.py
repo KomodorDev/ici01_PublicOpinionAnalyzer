@@ -4,9 +4,9 @@ model_provider package
 Holds all model provider classes responsible for interfacing with various LLM providers.
 """
 
-from services.model_providers.openai_provider import OpenAIProvider
-from services.model_providers.google_provider import GoogleProvider
-from services.model_providers.base_provider import ModelProvider
+from .openai_provider import OpenAIProvider
+from .google_provider import GoogleProvider
+from .base_provider import ModelProvider
 
 # Define what’s publicly importable from this package
 __all__ = ["OpenAIProvider", "GoogleProvider", "ModelProvider"]

@@ -1,4 +1,44 @@
+"""
+analysis_controller.py
+======================
+
+Controller for the Analysis view.
+
+This module wires the UI (AnalysisView) to the core domain and service layer.
+It does **not** implement heavy business logic itself, but coordinates calls
+into the underlying services and maps domain models into view models.
+
+Responsibilities:
+    - Build and render the initial AnalysisViewModel for the analysis page.
+    - React to UI callbacks from the view:
+        * Parsing pasted links and creating/updating ContentAnalysis objects.
+        * Handling selection, removal, and per-content configuration changes:
+          - prompt template
+          - classification group
+          - comment sort settings
+          - comment limit
+        * Generating and saving content summaries via VideoAnalysisService.
+        * Starting an analysis run for all current ContentAnalysis items.
+        * Exposing a polling endpoint to report ongoing analysis progress.
+    - Delegate domain-heavy work to services:
+        * ContentService / ContentAnalysisManager for content and comments.
+        * PromptTemplateService and ClassificationService for configuration.
+        * VideoAnalysisService for AI video summaries.
+        * ModelService and AnalysisService for LLM model selection and
+          running the actual comment analysis (possibly in a background thread).
+    - Convert between domain models and view models via AnalysisMapper so the
+      view layer receives only UI-friendly data structures.
+
+The controller is intentionally kept "thin":
+it validates user-facing configuration, starts background work via
+AnalysisService, and returns updated view models, while the real analysis
+workflow lives in the service layer and graph code.
+"""
+
+
 import threading
+import logging
+import traceback
 from typing import List, Optional, Tuple, Dict, Any
 
 from services import (
@@ -21,7 +61,7 @@ from models.view_models.analysis import (
     LLMModelInfoViewModel,
     ContentItemDetailViewModel,
     ContentItemListViewModel,
-    ContentAnalysisRunViewModel,
+    ContentAnalysisRunViewModel
 )
 
 from views import AnalysisView
@@ -504,7 +544,7 @@ class AnalysisController:
         analyses: List[ContentAnalysis] = self.content_analysis_manager.all()
         if not analyses:
             return {"ok": False, "message": "No content items to analyze."}
-        
+
         # title -> list of issue strings
         issues_by_title: dict[str, list[str]] = {}
 
@@ -562,10 +602,10 @@ class AnalysisController:
         if self._analysis_thread is not None and self._analysis_thread.is_alive():
             return {"ok": False, "message": "Analysis is already running."}
 
-        # 3) Start background thread so we don't block the UI
+        # 4) Start background thread so we don't block the UI
         thread = threading.Thread(
             target=self._run_analysis_background,
-            args=(analyses,),
+            args=(analyses, selected_models),
             daemon=True,
         )
         self._analysis_thread = thread
@@ -578,22 +618,23 @@ class AnalysisController:
         }
 
     # ---------------------------------------------------------
-    def _run_analysis_background(self, analyses: List[ContentAnalysis]) -> None:
+    def _run_analysis_background(self, analyses: List[ContentAnalysis], selected_models: List[Tuple[str, str]],) -> None:
         """
         Background worker: run the analysis and update per-model status on error.
         """
         try:
-            self.analysis_service.run_analysis(analyses)
+            self.analysis_service.run_analysis(
+                analyses=analyses,
+                selected_models=selected_models,
+            )
         except Exception as exc:
-            # If the whole run crashes, mark all model runs as ERROR so UI can show something useful.
+            print("=== ANALYSIS CRASHED ===")
+            traceback.print_exc()
+            logging.exception("Analysis failed in background thread")
             msg = f"Analysis failed: {exc!r}"
-            for ca in analyses:
-                for mr in ca.model_run_progress:
-                    mr.status = TaskStatusEnum.ERROR
-                    mr.error = msg
+            print(msg)
 
         finally:
-            # Allow new runs later
             self._analysis_thread = None
 
     # ---------------------------------------------------------
@@ -629,6 +670,26 @@ class AnalysisController:
             analysis_runs if analysis_runs else None
         )
 
+        # Controller-authoritative decision: is any analysis work still
+        # pending/running? Inspect fetch, per-model progress, and export
+        # statuses on the domain objects.
+        analysis_running = False
+        for ca in analyses:
+            if getattr(ca, "fetch_status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                analysis_running = True
+                break
+
+            for m in getattr(ca, "model_run_progress", []) or []:
+                if getattr(m, "status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                    analysis_running = True
+                    break
+            if analysis_running:
+                break
+
+            if getattr(ca, "export_status", None) in (TaskStatusEnum.RUNNING, TaskStatusEnum.PENDING):
+                analysis_running = True
+                break
+
         return AnalysisViewModel(
             contents=None,  # do not touch the left list
             selected=None,  # do not change selection
@@ -636,6 +697,7 @@ class AnalysisController:
             analysis_runs=analysis_runs_or_none,
             info_message=None,
             error_message=None,
+            analysis_running=analysis_running,
         )
 
     # ================================================================

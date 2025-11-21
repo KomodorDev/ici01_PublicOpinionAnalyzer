@@ -6,3 +6,6 @@ class TaskStatusEnum(str, Enum):
     RUNNING = "running"        # currently classifying
     DONE = "done"              # finished successfully
     ERROR = "error"            # failed
+
+    def __str__(self) -> str:
+        return self.value

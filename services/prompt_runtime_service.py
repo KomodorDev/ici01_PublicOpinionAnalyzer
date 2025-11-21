@@ -1,203 +1,189 @@
-# services/prompt_service.py
 """
 prompt_runtime_service.py
-=================
+=========================
 
-Service for managing prompts stored in the file system.
-Handles CRUD operations for prompt files.
+This module provides the `PromptRuntimeService`, which is responsible for
+building the actual system/user prompts that get sent to the LLM during comment
+analysis.
+
+Key design points:
+- The service is stateless except for **one cached base prompt pair** that is
+  created on the first `create_prompt(...)` call.
+- The base prompts contain classification descriptions, expected output format,
+  and content-level metadata (title, summary).
+- Comment-specific placeholders (TARGETCOMMENT, THREADCOMMENTS, TAGGEDCOMMENTS)
+  are applied on top of the cached base prompts on every call.
+
+This avoids recalculating expensive classification/outputformat blocks for
+every comment and ensures consistent prompts across a single analysis run.
 """
 
-from typing import List, Optional
+from typing import List, Dict, Tuple, Any
 import re
 
-from enums.platform_enum import PlatformEnum
-from repositories.prompt_template_repository import PromptTemplateRepository
-from services.classification_service import ClassificationService
-from services.output_format_service import OutputFormatService
-from models.domain import ContentItem, Comment, PromptTemplate
-
+from enums import PlatformEnum, PlaceholderEnum
+from services import ClassificationService
+from models.domain import ContentAnalysis, Comment
 
 
 ##################################################################
 class PromptRuntimeService:
     """
-    Service for managing and rendering prompt templates.
+    Builds LLM prompts for comment classification.
 
-    Features:
-    - CRUD operations (delegates to repository)
-    - Template caching for performance
-    - Persistent platform and classification configuration
-    - Variable substitution and rendering
+    This class creates two kinds of prompt content:
+
+    1. Base prompts (system + user):
+       - Includes classification instructions and JSON output format.
+       - Includes video/content metadata (title, summary).
+       - These are computed **once** and cached for the lifetime of this
+         PromptRuntimeService instance.
+
+    2. Comment-specific prompts:
+       - Includes the actual comment text.
+       - Includes optional thread or tagged comment context.
+       - These are applied on top of the cached base prompts for each call.
+
+    The constructor requires only a `ClassificationService`. Everything else is
+    provided per call via a `ContentAnalysis` (content/video metadata +
+    template) and a `Comment`.
+
+    This design keeps prompt construction fast, predictable, and consistent
+    while avoiding repeated classification/group formatting work.
     """
 
+    # pattern matches [PLACEHOLDER]
+    placeholder_pattern = re.compile(r"\[([A-Z0-9_]+)\]")
+
     # ----------------------------------------------------------------
-    def __init__(
-        self,
-        platform: Optional[PlatformEnum] = None,
-        prompt_template_name: Optional[str] = None,
-        classification_group_name: Optional[str] = None,
-        content_item: Optional[ContentItem] = None,
-        classification_service: Optional[ClassificationService] = None,
-        output_format_service: Optional[OutputFormatService] = None,
-    ):
+    def __init__(self, classification_service: ClassificationService):
         """
-        Initialize PromptService.
+        PromptRuntimeService is bound to a single classification_service
+        and caches exactly ONE base prompt pair (system/user) over its lifetime.
 
-        Args:
-            platform: Default platform (e.g., 'youtube')
-            prompt_template_name: Default prompt template to use
-            classification_group_name: Default classification group folder name
-            content_item: Optional ContentItem to extract metadata from
-            classification_service: Service for classification operations (optional, needed for create_prompt)
-            output_format_service: Service for output format generation (optional, needed for create_prompt)
+        The first call to create_prompt(...) initializes the cache based on
+        the given ContentAnalysis. Subsequent calls reuse that base and only
+        inject comment-specific placeholders.
         """
-        self.prompt_template_repository = PromptTemplateRepository()
-
-        # Persistent configuration
-        self.platform = platform
-        self.prompt_template_name = prompt_template_name
-        self.classification_group_name = classification_group_name
-
-        # Store content item reference
-        self.content_item = content_item
-
-        # Optional services (only needed for prompt creation)
         self.classification_service = classification_service
-        self.output_format_service = output_format_service
 
-        # Simple caching - single values per instance
-        self._cached_prompt_template: PromptTemplate = None
-        self._cached_classifications_string: Optional[str] = None
-        self._cached_output_format: Optional[str] = None
+        # One cache for base prompts; we only ever store "system" + "user" once.
+        self.cache: dict[str, Any] = {}
 
-        # Track what format is cached to avoid regeneration
-        self._cached_classification_variant: Optional[str] = None
-
-        # Regex pattern for placeholder detection
-        self.placeholder_pattern = r"\[([A-Z_]+)\]"
-
-        # Load and cache prompt template if platform and name are provided
-        if self.platform and self.prompt_template_name:
-            self._cached_prompt_template = (
-                self.prompt_template_repository.load_prompt_template(
-                    self.platform, self.prompt_template_name
-                )
-            )
-
-            # Detect which placeholders are used in the template
-            prompt_template_text = self._cached_prompt_template["template"]
-            used_placeholders = self.detect_placeholders(prompt_template_text)
-
-            # Determine which classification variant is used and cache it
-            if self.classification_service and self.classification_group_name:
-                classification_variant = self._get_used_classification_variant(
-                    used_placeholders
-                )
-
-                # Load and cache the appropriate format
-                self._cached_classifications_string = (
-                    self.classification_service.get_classification_group_to_string(
-                        self.classification_group_name,
-                        classification_variant or "CLASSIFICATIONS",
-                    )
-                )
-
-            # Load and cache output format if needed
-            if self.output_format_service and self.classification_group_name:
-                self._cached_output_format = (
-                    self.output_format_service.get_output_format_string(
-                        self.classification_group_name
-                    )
-                )
-
-    # ----------------------------------------------------------------
-    def _get_used_classification_variant(
-        self, used_placeholders: List[str]
-    ) -> Optional[str]:
-        """
-        Returns the used classification variant placeholder name (e.g. 'CLASSIFICATIONS_FULL') or None.
-        """
-        if not self.classification_service:
-            return None
-        available_variants = self.classification_service.get_classification_variants()
-        for variant in available_variants:
-            if variant in used_placeholders:
-                return variant
-        return None
 
     # ================================================================
     # Prompt Creation (Core Functionality)
     # ================================================================
-
     # ----------------------------------------------------------------
-    # WIP
-    def create_prompt(self, comment: Comment) -> tuple[str, str]:
+    def create_prompt(
+        self,
+        content_analysis: ContentAnalysis,
+        comment: Comment,
+    ) -> Tuple[str, str]:
         """
-        Create a complete prompt ready for LLM using cached data.
+        Create a complete prompt ready for the LLM using cached data.
+
+        The first call initializes the base system/user prompts for this
+        PromptRuntimeService instance (classification info, output format,
+        content metadata). Later calls reuse that base and only fill in
+        TARGETCOMMENT / THREADCOMMENTS / TAGGEDCOMMENTS.
 
         Args:
+            content_analysis: ContentAnalysis for this video/post
             comment: Comment object to generate prompt for
 
         Returns:
-            Tuple of (system_prompt, user_prompt) 
+            Tuple of (system_prompt, user_prompt)
         """
-        if not self._cached_prompt_template:
-            raise ValueError(
-                "Prompt template not cached. Initialize PromptService with "
-                "platform and prompt_template_name."
-            )
+        # 1) Initialize cache on first use --------------------------------
+        if "base_system" not in self.cache or "base_user" not in self.cache:
+            self._initialize_base_prompts(content_analysis)
 
-        if not self.content_item:
-            raise ValueError(
-                "ContentItem not provided. Initialize PromptService with content_item."
-            )
+        base_system: str = self.cache["base_system"]
+        base_user: str = self.cache["base_user"]
 
-        # Build comment context from comment object
-        comment_context = {
-            "TARGETCOMMENT": comment.text,
-            "THREADCOMMENTS": "THREADCOMMENTS_Test - Implementation currently missing",  # TODO
-            "TAGGEDCOMMENTS": "TaggedComments_Test - Implementation currently missing",  # TODO
-            "COMMENTAUTHOR": comment.author,
-            # ... whatever other comment fields you need
+        # 2) Build comment-specific variables -----------------------------
+        # NOTE: use PlaceholderEnum so we don't hardcode strings
+        comment_vars: Dict[str, Any] = {
+            PlaceholderEnum.TARGETCOMMENT.value: comment.text,
+            PlaceholderEnum.THREADCOMMENTS.value: getattr(comment, "thread_comments", "") or "",
+            PlaceholderEnum.TAGGEDCOMMENTS.value: getattr(comment, "tagged_comments", "") or "",
         }
 
-        # Build variables from cached/stored data
-        variables = {
-            # Cached at init
-            "CLASSIFICATIONS": self._cached_classifications_string or "",
-            "OUTPUTFORMAT": self._cached_output_format or "",
-            # From content_item
-            "VIDEOTITLE": self.content_item.title,
-            "VIDEOCONTEXT": self.content_item.summary,
-            # From comment
-            **comment_context,
-        }
+        # 3) Apply comment placeholders on top of the base prompts --------
+        system_prompt = self._substitute_variables(base_system, comment_vars)
+        user_prompt = self._substitute_variables(base_user, comment_vars)
 
-        return self._cached_prompt_template.system_prompt, self._substitute_variables(
-            self._cached_prompt_template.user_prompt_template, variables
+        return system_prompt, user_prompt
+
+    # ================================================================
+    # Internal helpers
+    # ================================================================
+    def _initialize_base_prompts(self, content_analysis: ContentAnalysis) -> None:
+        """
+        Build and cache the base system/user prompts for this service instance.
+
+        Base prompts:
+        - depend on ContentAnalysis (platform, template, classification_group, content_item)
+        - include classification description and [OUTPUTFORMAT]
+        - include video metadata (title, summary)
+        - DO NOT include comment-specific placeholders (TARGET/THREAD/TAGGED)
+        """
+        ca = content_analysis
+
+        prompt_template = ca.prompt_template
+        content_item = ca.content
+        classification_group = ca.classification_group
+
+        # 1) Ask ClassificationService for classification text + OUTPUTFORMAT
+        classifications_str = self.classification_service.get_classification_group_string(
+            classification_group
         )
+        outputformat_hint = self.classification_service.build_outputformat_hint_json(
+            classification_group
+        )
+
+        # 2) Base variables that are the same for all comments ------------
+        base_vars: Dict[str, Any] = {
+            PlaceholderEnum.CLASSIFICATIONS.value: classifications_str,
+            PlaceholderEnum.OUTPUTFORMAT.value: outputformat_hint,
+            PlaceholderEnum.VIDEOTITLE.value: getattr(content_item, "title", ""),
+            PlaceholderEnum.VIDEOCONTEXT.value: getattr(content_item, "summary", ""),
+        }
+
+        # 3) Apply base vars to system and user templates -----------------
+        # We only substitute these four placeholders here.
+        system_template = prompt_template.system_prompt
+        user_template = prompt_template.user_prompt
+
+        base_system = self._substitute_variables(system_template, base_vars)
+        base_user = self._substitute_variables(user_template, base_vars)
+
+        # 4) Cache once for this PromptRuntimeService lifetime ------------
+        self.cache["base_system"] = base_system
+        self.cache["base_user"] = base_user
 
     # ================================================================
     # Variable Substitution
     # ================================================================
-
     # ----------------------------------------------------------------
-    def _substitute_variables(self, template: str, variables: dict) -> str:
+    def _substitute_variables(self, template: str, variables: Dict[str, Any]) -> str:
         """
-        Replace all [PLACEHOLDERS] with values.
+        Replace all [PLACEHOLDER] occurrences with the given values.
 
         Args:
-            template: Template string with placeholders
-            variables: Dict mapping placeholder names to values
+            template: Template string with [PLACEHOLDER] tokens
+            variables: Dict mapping placeholder names (without brackets) to values
 
         Returns:
             Rendered string
         """
+
         rendered = template
 
         for key, value in variables.items():
             placeholder = f"[{key}]"
-            value_str = str(value) if value is not None else ""
+            value_str = "" if value is None else str(value)
             rendered = rendered.replace(placeholder, value_str)
 
         return rendered
@@ -205,112 +191,190 @@ class PromptRuntimeService:
     # ----------------------------------------------------------------
     def detect_placeholders(self, template_text: str) -> List[str]:
         """
-        Detect all placeholders in template.
+        Detect all placeholders in a template.
 
         Args:
             template_text: Template string
 
         Returns:
-            List of placeholder names (without brackets)
+            List of placeholder names (without brackets), e.g. ["VIDEOTITLE", "OUTPUTFORMAT"]
         """
-        matches = re.findall(self.placeholder_pattern, template_text)
+        matches = self.placeholder_pattern.findall(template_text or "")
+        # return unique names
         return list(set(matches))
-
-    # ----------------------------------------------------------------
-    # WIP
-    def validate_template(
-        self, template_name: str, platform: Optional[str] = None
-    ) -> dict:
-        """
-        Validate a template.
-
-        Returns:
-            Validation result dict
-        """
-        platform = platform or self.platform
-        if not platform:
-            raise ValueError("Platform must be specified or set as default")
-
-        template_data = self.load_prompt_template(platform, template_name)
-        template_text = template_data["template"]
-
-        detected = self.detect_placeholders(template_text)
-        required = template_data.get("required_variables", [])
-        optional = template_data.get("optional_variables", [])
-
-        declared = set(required + optional)
-        undeclared = [p for p in detected if p not in declared]
-
-        return {
-            "valid": len(undeclared) == 0,
-            "detected_placeholders": detected,
-            "required_variables": required,
-            "optional_variables": optional,
-            "undeclared_placeholders": undeclared,
-        }
 
     # ----------------------------------------------------------------
 
 ##################################################################
-
-
 def main():
-    """Test the PromptService class."""
-    # Create a ContentItem
-    content_item = ContentItem(
-        content_id="vid123",
-        platform="youtube",
-        url="https://youtube.com/watch?v=abc123",
-        title="How to Build Amazing Apps",
-        author="TechGuru",
-        description="A comprehensive tutorial on app development",
-        view_count=50000,
-        like_count=3200,
-        summary="This video covers the fundamentals of modern app development including architecture, testing, and deployment.",
+    """
+    Minimal, self-contained test for PromptRuntimeService.
+
+    This does NOT depend on your real repositories. It:
+    - creates dummy PromptTemplate / ContentItem / ClassificationGroup / Comment
+    - uses a fake ClassificationService with predictable outputs
+    - calls create_prompt() twice to demonstrate:
+        * base prompts are cached
+        * TARGETCOMMENT is substituted per comment
+    """
+
+    # --------------------------------------------------------------
+    # Dummy helper classes
+    # (NOTE: adjust/remove these if you want to use your real models.)
+    # --------------------------------------------------------------
+    class DummyPromptTemplate:  # pylint: disable=missing-class-docstring
+        def __init__(self, system_prompt: str, user_prompt_template: str):
+            self.system_prompt = system_prompt
+            self.user_prompt_template = user_prompt_template
+
+    class DummyContentItem:     # pylint: disable=missing-class-docstring
+        def __init__(self, title: str, summary: str):
+            self.title = title
+            self.summary = summary
+
+    class DummyClassification:  # pylint: disable=missing-class-docstring
+        def __init__(self, name: str, question: str):
+            self.name = name
+            self.question = question
+            # Other fields omitted for this test.
+
+    class DummyClassificationGroup: # pylint: disable=missing-class-docstring
+        def __init__(self, name: str, classifications: List[DummyClassification]):
+            self.name = name
+            self.classifications = classifications
+
+    class DummyContentAnalysis:
+        """
+        Minimal stand-in for ContentAnalysis.
+        NOTE: In your real code, ContentAnalysis likely is a dataclass with
+        many more fields. If you want to test with the real one, replace this
+        with an actual ContentAnalysis instance and remove this dummy class.
+        """
+        def __init__(self, platform, content, prompt_template, classification_group):
+            self.platform = platform
+            self.content = content
+            self.prompt_template = prompt_template
+            self.classification_group = classification_group
+
+    class DummyComment:
+        """
+        Minimal stand-in for Comment.
+        NOTE: If your real Comment model has different field names,
+        adjust this or use the real Comment instead.
+        """
+        def __init__(self, text: str, thread_comments: str = "", tagged_comments: str = ""):
+            self.text = text
+            self.thread_comments = thread_comments
+            self.tagged_comments = tagged_comments
+
+    # --------------------------------------------------------------
+    # Fake ClassificationService for testing PromptRuntimeService
+    # --------------------------------------------------------------
+    class FakeClassificationService:    # pylint: disable=missing-class-docstring
+        def get_classification_group_string(self, group: DummyClassificationGroup) -> str: # pylint: disable=missing-function-docstring
+            # Simple human-readable block for testing.
+            lines = [f"Classification group: {group.name}", ""]
+            for c in group.classifications:
+                lines.append(f"- {c.name}: {c.question}")
+            return "\n".join(lines)
+
+        def build_outputformat_hint_json(self, group: DummyClassificationGroup) -> str: # pylint: disable=missing-function-docstring
+            # Very simple JSON-like hint for testing.
+            # In your real ClassificationService this is a real JSON schema/hint.
+            return (
+                "{\n"
+                f'  "{group.name}": {{ "value": "<test-value>", "explanation": "<test-explanation>" }}\n'
+                "}"
+            )
+
+    # --------------------------------------------------------------
+    # Build dummy data for the test
+    # --------------------------------------------------------------
+    fake_classification_service = FakeClassificationService()
+    prompt_service = PromptRuntimeService(classification_service=fake_classification_service)  # type: ignore[arg-type]
+
+    # Dummy classification group
+    demo_classifications = [
+        DummyClassification(
+            name="IsProTaiwan",
+            question="Is this comment supportive of Taiwan?"
+        ),
+        DummyClassification(
+            name="Tone",
+            question="What is the overall tone of this comment?"
+        ),
+    ]
+    demo_group = DummyClassificationGroup(
+        name="DemoGroup",
+        classifications=demo_classifications,
     )
 
-    # Create a Comment
-    comment = Comment(
-        comment_id="comment456",
-        content_id="vid123",
-        author="user789",
-        text="This is an incredibly toxic comment that should be flagged!",
-        published_at="2025-11-05T18:30:00Z",
-        like_count=5,
+    # Dummy content item (video/post)
+    demo_content = DummyContentItem(
+        title="Demo Video Title",
+        summary="This is a short summary of the demo video.",
     )
 
-    # Initialize services
-    classification_service = ClassificationService()
-    output_format_service = OutputFormatService()
+    # Dummy prompt template that uses the placeholders we support
+    system_tpl = (
+        "You are a labeling assistant.\n\n"
+        "Classifications:\n[CLASSIFICATIONS]\n\n"
+        "Output format:\n[OUTPUTFORMAT]\n"
+    )
+    user_tpl = (
+        "Video title: [VIDEOTITLE]\n"
+        "Video context: [VIDEOCONTEXT]\n\n"
+        "Target comment:\n[TARGETCOMMENT]\n\n"
+        "Thread comments:\n[THREADCOMMENTS]\n\n"
+        "Tagged comments:\n[TAGGEDCOMMENTS]\n"
+    )
+    demo_prompt_template = DummyPromptTemplate(system_prompt=system_tpl, user_prompt_template=user_tpl)
 
-    # Create PromptService
-    prompt_service = PromptRuntimeService(
-        platform=PlatformEnum.YOUTUBE,
-        prompt_template_name="default",
-        classification_group_name="Default",
-        content_item=content_item,
-        classification_service=classification_service,
-        output_format_service=output_format_service,
+    # Dummy ContentAnalysis for the test
+    demo_ca = DummyContentAnalysis(
+        platform=PlatformEnum.YOUTUBE,  # NOTE: adjust if your enum name differs
+        content=demo_content,
+        prompt_template=demo_prompt_template,
+        classification_group=demo_group,
     )
 
-    # Test create_prompt
-    try:
-        prompt = prompt_service.create_prompt(comment)
+    # Two different comments to show base reuse and per-comment substitution
+    comment1 = DummyComment(
+        text="I really love how Taiwan is handling this situation!",
+        thread_comments="Previous comment in thread...",
+        tagged_comments="@user123 mentioned something similar."
+    )
+    comment2 = DummyComment(
+        text="This video is boring and poorly researched.",
+        thread_comments="Earlier: 'Great analysis!'",
+        tagged_comments=""
+    )
 
-        print("=" * 80)
-        print("GENERATED PROMPT:")
-        print("=" * 80)
-        print(prompt)
-        print("=" * 80)
+    # --------------------------------------------------------------
+    # Run test calls
+    # --------------------------------------------------------------
+    print("=== First call (initializes base prompts) ===")
+    sys1, usr1 = prompt_service.create_prompt(demo_ca, comment1)
+    print("\n--- System Prompt ---\n")
+    print(sys1)
+    print("\n--- User Prompt ---\n")
+    print(usr1)
 
-    except Exception as e:
-        print(f"Error creating prompt: {e}")
-        import traceback
+    print("\n\n=== Second call (reuses base, new TARGETCOMMENT etc.) ===")
+    sys2, usr2 = prompt_service.create_prompt(demo_ca, comment2)
+    print("\n--- System Prompt ---\n")
+    print(sys2)
+    print("\n--- User Prompt ---\n")
+    print(usr2)
 
-        traceback.print_exc()
+    # NOTE:
+    # - sys1 and sys2 should be identical (base system prompt cached).
+    # - usr1 and usr2 should differ in the [TARGETCOMMENT] / [THREADCOMMENTS] / [TAGGEDCOMMENTS] parts.
+    # - All placeholders [CLASSIFICATIONS], [OUTPUTFORMAT], [VIDEOTITLE], [VIDEOCONTEXT]
+    #   should be replaced already in both prompts.
 
 
 if __name__ == "__main__":
     main()
 
-# python -m services.prompt_service
+# python -m services.prompt_runtime_service

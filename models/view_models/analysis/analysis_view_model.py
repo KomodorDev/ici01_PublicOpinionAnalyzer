@@ -37,3 +37,8 @@ class AnalysisViewModel:
     # ------------------------------
     info_message: Optional[str] = None
     error_message: Optional[str] = None
+
+    # UI hint: whether the analysis subsystem is currently running any work.
+    # The controller should set this to True when there are active runs so the
+    # view can decide whether to keep polling.
+    analysis_running: bool = False

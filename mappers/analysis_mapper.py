@@ -180,18 +180,16 @@ class AnalysisMapper:
         # Human-readable label (you can later replace this with a registry lookup)
         label = f"{p.provider.capitalize()} - {p.model_name}"
 
-        vm = ModelRunProgressViewModel()
-        vm.provider = p.provider
-        vm.model_name = p.model_name
-        vm.label = label
-
-        vm.status = p.status
-        vm.progress = p.progress
-        vm.current_comment = p.current_comment
-        vm.total_comments = p.total_comments
-        vm.error = p.error
-
-        return vm
+        return ModelRunProgressViewModel(
+            provider=p.provider,
+            model_name=p.model_name,
+            label=label,
+            status=p.status,
+            progress=p.progress,
+            current_comment=p.current_comment,
+            total_comments=p.total_comments,
+            error=p.error,
+        )
 
     # ---------------------------------------------------------
     def content_analysis_to_content_analysis_run_view_model(

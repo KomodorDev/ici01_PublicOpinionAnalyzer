@@ -11,142 +11,211 @@ Usage:
     node_fn = create_llm_analysis_node(client, model_name, rate_limiter, ...)
 """
 
+import traceback
+
 import time
 import json
 from typing import Any
 
-from enums.platform_enum import PlatformEnum
-from models.domain import ClassificationGroup, ContentAnalysis, ContentItem, Label
+from enums import TaskStatusEnum
+from models.domain import  ContentAnalysis, Label, ModelRunProgress
 from services.classification_service import ClassificationService
 from services.prompt_runtime_service import PromptRuntimeService
 
+MISSING_LABEL_SENTINEL = "__MISSING_OR_ERROR__"
 
 def create_comment_classification_node(
     client: Any,
-    platform: PlatformEnum,
-    prompt_template_name: str,
-    classification_group_name: str,
-    classification_group: ClassificationGroup,
-    content_item: ContentItem,
+    prompt_runtime_service: PromptRuntimeService,
     classification_service: ClassificationService,
+    model_run_progress: ModelRunProgress,
     rate_limiter=None,
     max_retries: int = 3,
     qps: int = 4,
+
 ):
     """
     Creates a node for classifying comments with a specific LLM and config.
 
     Configures its own PromptService, which is not shared.
     """
-    prompt_service = PromptRuntimeService(
-        platform=platform,
-        prompt_template_name=prompt_template_name,
-        classification_group_name=classification_group_name,
-        content_item=content_item,
-        classification_service=classification_service,
-    )
 
     def process(content_analysis: ContentAnalysis):
         comments = content_analysis.comments
-        model_name = getattr(client, "model", "UnknownModel")
-        print(f"\n🤖 [{model_name}] Starting processing of {len(comments)} comments...")
+        classification_group = content_analysis.classification_group.classifications
+
+        model_name = client.name
+        total_comments = len(comments)
+
+        # mark as RUNNING
+        model_run_progress.status = TaskStatusEnum.RUNNING
+        model_run_progress.current_comment = 0
+        model_run_progress.total_comments = total_comments
+        model_run_progress.progress = 0
+
+        # PRINT
+        print(f"\n🤖 [{model_name}] Starting processing of {total_comments} comments...")
         start_time = time.time()
 
-        for comment in comments:
+        for idx, comment in enumerate(comments, start=1):
+            print(f"\n🟦 Processing comment {idx}/{total_comments} (ID: {comment.comment_id})")
+
             question_start = time.time()
             attempts = 0
             success = False
             label_map = {}
 
-            # Retry logic for each comment/classification set
+            # ============================================================
+            # 1) CALL MODEL WITH RETRIES (build prompts + invoke + parse)
+            # ============================================================
             while attempts < max_retries and not success:
+                print(f"\n🟦 Attempts: {attempts}")
                 try:
-                    # (1) Throttle model calls if needed
+                    # 1.1) Throttle if we have a rate limiter
                     if rate_limiter:
                         rate_limiter.acquire()
 
-                    # (2) Prepare LLM/system/user prompt for this comment
-                    sys_prompt, usr_prompt = prompt_service.create_prompt(comment)
+                    try:
+                        # 1.2) Build system + user prompts for THIS comment
+                        sys_prompt, usr_prompt = prompt_runtime_service.create_prompt(
+                            content_analysis=content_analysis,
+                            comment=comment,
+                        )
 
-                    # (3) Call LLM/model API with the prompts and get a result
-                    api_result = client.invoke(sys_prompt, usr_prompt)
+                        # 1.3) Invoke the model
+                        conversation = [
+                            {"role": "system", "content": sys_prompt},
+                            {"role": "user", "content": usr_prompt},
+                        ]
 
-                    # (4) Release throttle/resource if used
-                    if rate_limiter:
-                        rate_limiter.release()
+                        # 🔍 DEBUG: print raw conversation
+                        print("\n🔵 RAW CONVERSATION:")
+                        print(conversation)
+                        print("------ END OF CONVERSATION ------\n")
 
-                    # (5) Parse and check validity of JSON result
-                    if check_json(api_result):
-                        parsed = json.loads(api_result) if isinstance(api_result, str) else api_result
-                        missing = [] # To collect any classifications absent from the model output
+                        api_result = client.invoke(conversation)
+
+                        # 🔍 DEBUG: print raw model response
+                        print("\n🔵 RAW MODEL RESPONSE:")
+                        print(api_result)
+                        print("------ END OF RESPONSE ------\n")
+
+                        # 1.5) Ensure the reply is JSON-ish
+                        if not check_json(api_result.content):
+                            attempts += 1
+                            if attempts < max_retries:
+                                print(
+                                    f"  ⚠️ [{model_name}] Comment ID {comment.comment_id} "
+                                    f"returned non-JSON, retry {attempts}/{max_retries}"
+                                )
+                            continue
+
+                        # 1.6) Parse JSON into a Python dict
+                        # Always get the text content from the AIMessage
+                        raw = api_result.content
+
+                        # Parse JSON
+                        try:
+                            parsed = json.loads(raw) if isinstance(raw, str) else raw
+                        except Exception as e:
+                            print("\n❌ Failed to parse model output as JSON:")
+                            print(raw)
+                            raise e
+                        missing: list[str] = []
                         label_map = {}
 
-                        # (6) For every classification this comment needs
+                        # ==========================================
+                        # 2) BUILD LABELS FOR EACH CLASSIFICATION
+                        # ==========================================
                         for classification in classification_group:
                             label_data = parsed.get(classification.name)
 
                             if label_data is None:
-                                # If label is missing, remember to retry
+                                # Missing label -> mark for retry
                                 missing.append(classification.name)
                                 continue
 
-                            # (7) Build Label instance from the API result dict or raw value
-                            label = Label(
-                                value=label_data.get("value") if isinstance(label_data, dict) else label_data,
-                                explanation=label_data.get("explanation") if isinstance(label_data, dict) else None
+                            # Build Label from either dict or raw scalar
+                            if isinstance(label_data, dict):
+                                label = Label(
+                                    value=label_data.get("value"),
+                                    explanation=label_data.get("explanation"),
+                                )
+                            else:
+                                label = Label(value=label_data, explanation=None)
+
+                            # Validate label, or mark as invalid
+                            is_valid = classification_service.validate_label_for_classification(
+                                classification,
+                                label,
+                            )
+                            label_map[classification.name] = (
+                                label
+                                if is_valid
+                                else Label(value=None, explanation="Invalid label value.")
                             )
 
-                            # (8) Validate label (type/range/category); if invalid, store a default error Label
-                            is_valid = classification_service.validate_label_for_classification(classification, label)
-                            label_map[classification.name] = label if is_valid else Label(
-                                value=None, explanation="Invalid label value."
-                            )
-
+                        # If any classifications missing, retry the whole call
                         if missing:
-                            # (9) If any label is missing, retry the whole model call for this comment
                             attempts += 1
                             if attempts < max_retries:
                                 print(
-                                    f"  ⚠️  [{model_name}] Missing labels {missing} for comment ID {comment.comment_id}, retry {attempts}/{max_retries}"
+                                    f"  ⚠️ [{model_name}] Missing labels {missing} "
+                                    f"for comment ID {comment.comment_id}, "
+                                    f"retry {attempts}/{max_retries}"
                                 )
-                            continue  # Retry
-                        else:
-                            # (10) If all labels present, check if all are valid (success for this comment)
-                            success = all(l.value is not None for l in label_map.values())
-                            print(
-                                f"  [{model_name}] Processed comment ID {comment.comment_id}: "
-                                f"{'Success' if success else 'Some labels invalid'}"
-                            )
-                    else:
-                        # (11) If model response isn't JSON, count as failed attempt, possibly retry
-                        attempts += 1
-                        if attempts < max_retries:
-                            print(
-                                f"  ⚠️  [{model_name}] Comment ID {comment.comment_id} returned non-JSON, retry {attempts}/{max_retries}"
-                            )
+                            continue
+
+                        # If we reach here, all labels are present and valid
+                        success = True
+                        model_run_progress.current_comment = idx
+                        model_run_progress.progress = int(idx * 100 / total_comments)
+
+                    finally:
+                        # This *always* runs if we acquired
+                        if rate_limiter:
+                            rate_limiter.release()
+
                 except Exception as e:
-                    # (12) Any exception releases rate limiter and counts as a failed attempt
-                    if rate_limiter:
-                        rate_limiter.release()
+                    # Any exception: count attempt, maybe retry
                     attempts += 1
+
+                    model_run_progress.status = TaskStatusEnum.ERROR
+                    model_run_progress.error = str(e)
+
                     print(
-                        f"  ✗ [{model_name}] Error processing comment ID {comment.comment_id}: {str(e)}"
+                        f"  ✗ [{model_name}] Error processing comment ID "
+                        f"{comment.comment_id}: {str(e)}"
                     )
 
-            # (13) Ensure the comment.labels field exists and is ready for model/classification results
-            if not hasattr(comment, 'labels') or comment.labels is None:
+                    # Print full traceback to stdout/stderr
+                    print("  --- FULL TRACEBACK BELOW ---")
+                    traceback.print_exc()
+
+                    # Error logged above; continue to next attempt or comment.
+                    # Removed re-raise to allow processing of remaining comments.
+
+            # =======================================================
+            # 3) ATTACH RESULTS TO COMMENT (labels per classification)
+            # =======================================================
+            if not hasattr(comment, "labels") or comment.labels is None:
                 comment.labels = {}
             comment.labels.setdefault(model_name, {})
 
-            # (14) Store results for every classification: actual Label if valid, or error Label if not
             for classification in classification_group:
-                if classification.name in label_map and label_map[classification.name].value is not None:
-                    comment.labels[model_name][classification.name] = label_map[classification.name]
+                cls_name = classification.name
+                label = label_map.get(cls_name)
+
+                if label is not None:
+                    # Use whatever the validator produced, including value=None
+                    # (None is allowed as "no stance / no info")
+                    comment.labels[model_name][cls_name] = label
                 else:
-                    # Store a default error Label for missing, invalid, or never-computed outputs
-                    comment.labels[model_name][classification.name] = Label(
-                        value=None,
-                        explanation="Label result missing, invalid, or retries exceeded."
+                    # Classification completely missing (not in model output,
+                    # retries exceeded, or we never set it in label_map)
+                    comment.labels[model_name][cls_name] = Label(
+                        value=MISSING_LABEL_SENTINEL,
+                        explanation="Label result missing or retries exceeded.",
                     )
 
             # QPS control
@@ -155,6 +224,9 @@ def create_comment_classification_node(
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
+        # After all comments processed:
+        model_run_progress.status = TaskStatusEnum.DONE
+        model_run_progress.error = None
         total_time = time.time() - start_time
         print(
             f"  ✅ [{model_name}] Finished! Elapsed time: {total_time:.2f} seconds"
