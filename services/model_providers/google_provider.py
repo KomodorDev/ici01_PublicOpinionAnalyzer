@@ -131,7 +131,7 @@ class GoogleProvider(ModelProvider):
                 f"{self.provider_name.title()} not available: {message}"
             )
 
-        client =ChatGoogleGenerativeAI(
+        client = ChatGoogleGenerativeAI(
             model=model_name,
             google_api_key=self.api_key,
             temperature=kwargs.get("temperature", 0.7),
