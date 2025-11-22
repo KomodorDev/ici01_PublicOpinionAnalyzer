@@ -2,49 +2,72 @@
 classification_repository.py
 ============================
 
-Provides persistent storage and retrieval of classification data using a
-simple folder-based JSON repository structure.
+Low-level filesystem persistence for Classification Groups and Classifications.
 
-This module defines the `ClassificationRepository` class responsible for
-reading and writing `Classification` and `ClassificationGroup` objects
-to and from the filesystem. Each classification group is represented
-by a folder under the base directory (`Classifications/`), and each
-classification within that group is serialized as a `.json` file.
+This repository stores all label definitions in a simple folder-based
+structure:
 
-The repository implements full CRUD operations:
-- Load all existing classification groups and their member classifications.
-- Load a single classification group by name
-- List all available classification group names
-- Save or update a single classification or entire group.
-- Create the directory structure automatically if missing.
-- Delete individual classifications or entire classification groups.
-
-Directory Structure Example:
     Classifications/
-        Political/
-            pro_taiwan.json
-            anti_china.json
-        Tone/
-            tone.json
+        <group_name>/
+            <classification_name>.json
+            <classification_name>.json
+            ...
 
-Example:
-    >>> repo = ClassificationRepository(base_path="Classifications")
-    >>> groups = repo.load_all_classification_groups()
-    >>> new_class = Classification(name="tone", question="What is the tone?")
-    >>> repo.save_classification("Tone", new_class)
-    >>> repo.delete_classification("Tone", "tone")
+Design Principles
+-----------------
+• The **folder name** is the classification group name.  
+• The **filename stem** (without `.json`) is the authoritative
+  classification *name*.  
+  The JSON file does **not** contain a `name` field—names are derived
+  exclusively from filenames.
 
-Attributes:
-    ClassificationRepository:
-        Main repository class providing high-level file-based persistence.
+• The repository is intentionally "dumb":
+  It performs **no business validation**, **no collision logic**, and **no
+  normalization rules**. These responsibilities belong to the
+  `ClassificationService` layer.
 
-Raises:
-    OSError:
-        If directories cannot be created or files cannot be written.
-    json.JSONDecodeError:
-        If an existing classification file is malformed.
+• All JSON files contain only the editable fields of `Classification`
+  (question, explanation, output_type, categories, etc).  
+  The `Classification.name` attribute is injected by the repository when
+  loading from disk.
+
+Responsibilities
+----------------
+This module provides **pure CRUD access**:
+
+    - list_classification_group_names()
+    - load_all_classification_groups()
+    - load_classification_group(group_name)
+    - load_classification(group_name, classification_name)
+
+    - create_classification_group(group_name)
+    - rename_classification_group(old_name, new_name)
+    - delete_classification_group(group_name)
+
+    - save_classification_group(group)
+    - save_classification(group_name, classification)
+    - rename_classification(group_name, old_name, new_name)
+    - delete_classification(group_name, classification_name)
+    - list_classification_names(group_name)
+
+Atomicity & Safety
+------------------
+• Group and classification rename operations delegate directly to the OS
+  (`os.rename()`), which is atomic on POSIX systems.  
+• All file I/O uses UTF-8.  
+• Missing paths raise explicit filesystem errors.
+
+What This Repository Does NOT Do
+--------------------------------
+• It does not enforce uniqueness of names.  
+• It does not validate classification output types or structure.  
+• It does not prevent illegal or reserved names.  
+• It does not maintain IDs—file names are the identity.
+
+These checks are intentionally left to the **service layer**, which is
+responsible for enforcing business rules before calling repository
+methods.
 """
-
 
 import os
 import json
@@ -102,53 +125,103 @@ class ClassificationRepository:
         return groups
 
     # ----------------------------------------------------------------
+    def load_classification(
+        self,
+        group_name: str,
+        classification_name: str,
+    ) -> Classification:
+        """
+        Load a single Classification from disk using the logical
+        classification name (filename WITHOUT .json).
+
+        This ensures:
+        - Service/controller only deal with logical names
+        - Repo converts to actual filename internally
+        - Classification.name is derived from classification_name
+
+        Args:
+            group_name (str):
+                Name of the classification group (folder name)
+            classification_name (str):
+                Logical name of the classification (filename stem)
+
+        Returns:
+            Classification:
+                Domain object with canonical name derived from filename-stem.
+
+        Raises:
+            FileNotFoundError:
+                If the JSON file does not exist.
+            json.JSONDecodeError:
+                If the file content is malformed.
+        """
+        group_path = os.path.join(self.base_path, group_name)
+        file_path = os.path.join(group_path, f"{classification_name}.json")
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(
+                f"Classification not found: {group_name}/{classification_name}.json"
+            )
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Convert output_type to enum
+        if "output_type" in data and isinstance(data["output_type"], str):
+            data["output_type"] = ClassificationOutputEnum(data["output_type"])
+
+        return Classification(name=classification_name, **data)
+
+    # ----------------------------------------------------------------
+    def rename_classification(self, group_name: str, old_name: str, new_name: str) -> None:
+        """
+        Rename a classification file inside a group.
+
+        This is a pure filesystem operation:
+        - old_name / new_name are filename stems (without .json)
+        - No JSON content is modified here
+        - Service layer must validate uniqueness before calling this
+
+        Raises:
+            FileNotFoundError: old file does not exist
+            FileExistsError: new file already exists
+            OSError: filesystem rename failure
+        """
+        group_path = os.path.join(self.base_path, group_name)
+        old_path = os.path.join(group_path, f"{old_name}.json")
+        new_path = os.path.join(group_path, f"{new_name}.json")
+
+        if not os.path.exists(old_path):
+            raise FileNotFoundError(f"Cannot rename: '{old_name}.json' does not exist in '{group_name}'.")
+
+        if os.path.exists(new_path):
+            raise FileExistsError(f"Cannot rename to '{new_name}.json': file already exists.")
+
+        os.rename(old_path, new_path)
+
+    # ----------------------------------------------------------------
     def load_classification_group(self, group_name: str) -> ClassificationGroup:
         """
-        Load a single classification group by name.
-        
-        Args:
-            group_name: Name of the classification group (folder name)
-            
-        Returns:
-            ClassificationGroup: The loaded group with all its classifications
-            
-        Raises:
-            FileNotFoundError: If the group folder does not exist
-            json.JSONDecodeError: If any classification JSON file is malformed
+        Load a classification group and all classifications inside it, deriving each name from its filename.
         """
-        # Build path to the group folder
         group_path = os.path.join(self.base_path, group_name)
 
-        # Check if group folder exists
         if not os.path.exists(group_path):
             raise FileNotFoundError(f"Classification group not found: {group_name}")
-
         if not os.path.isdir(group_path):
             raise ValueError(f"Path is not a directory: {group_path}")
 
-        # Create ClassificationGroup object
         group = ClassificationGroup(name=group_name)
 
-        # Load all classification JSON files in the group folder
         for file_name in os.listdir(group_path):
-
-            # Skip non-JSON files
             if not file_name.endswith(".json"):
                 continue
 
-            # Load the classification from JSON
-            file_path = os.path.join(group_path, file_name)
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # Convert output_type to Enum if it's present and is a string
-                if "output_type" in data and isinstance(data["output_type"], str):
-                    data["output_type"] = ClassificationOutputEnum(data["output_type"])
-                classification = Classification(**data)
-                group.classifications.append(classification)
+            # derive classification name from filename
+            classification_name = os.path.splitext(file_name)[0]
 
-        # Check if group has any classifications
-        # if not group.classifications:
-        #    raise ValueError(f"No classifications found in group: {group_name}")
+            classification = self.load_classification(group_name, classification_name)
+            group.classifications.append(classification)
 
         return group
 
@@ -170,6 +243,66 @@ class ClassificationRepository:
                 groups.append(item)
 
         return groups
+
+    # ----------------------------------------------------------------
+    def rename_classification_group(self, old_name: str, new_name: str) -> None:
+        """
+        Rename a classification group folder on disk.
+
+        This operation is **purely filesystem-level** and intentionally does
+        NOT perform any business-rule validation such as:
+        - "name must not be empty"
+        - "name must follow certain formatting"
+        - "name must be unique in the domain sense"
+
+        Those checks belong in the controller or service layer.
+
+        What this method DOES guarantee:
+        - The source directory must exist.
+        - The target directory must NOT already exist.
+        - The rename operation is performed atomically by the OS.
+            (On POSIX systems, `os.rename()` is atomic. On Windows, it is
+            effectively atomic unless cross-volume.)
+
+        Args:
+            old_name (str):
+                Current folder name under the repository base path.
+            new_name (str):
+                Requested new folder name.
+                Must not already exist in the filesystem; otherwise an error is raised.
+
+        Raises:
+            FileNotFoundError:
+                If the source folder does not exist.
+            FileExistsError:
+                If the target folder already exists.
+            OSError:
+                If the rename operation fails due to filesystem permissions or I/O errors.
+        """
+
+        old_path = os.path.join(self.base_path, old_name)
+        new_path = os.path.join(self.base_path, new_name)
+
+        # Ensure the source exists
+        if not os.path.exists(old_path):
+            raise FileNotFoundError(f"Classification group not found: '{old_name}'")
+
+        # Prevent accidental overwrite of an existing folder
+        if os.path.exists(new_path):
+            raise FileExistsError(
+                f"Cannot rename group to '{new_name}' because that folder already exists."
+            )
+
+        # Perform the atomic rename
+        os.rename(old_path, new_path)
+
+    # ----------------------------------------------------------------
+    def create_classification_group(self, group_name: str) -> None:
+        """
+        Create a new classification group folder on disk.   
+        """
+        group_path = os.path.join(self.base_path, group_name)
+        os.makedirs(group_path, exist_ok=False)  # raises if exists
 
     # ----------------------------------------------------------------
     def save_classification_group(self, group: ClassificationGroup) -> None:
@@ -224,9 +357,13 @@ class ClassificationRepository:
         # Make directory if it doesn't exist:
         os.makedirs(group_path, exist_ok=True)
 
+
+        data = asdict(classification)
+        data.pop("name", None)  # <-- critical: avoid double truth
+
         # Write classification data to JSON file and overwrite if it exists:
         with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(asdict(classification), f, indent=4, ensure_ascii=False)
+            json.dump(data, f, indent=4, ensure_ascii=False)
 
     # ----------------------------------------------------------------
     def delete_classification_group(self, group_name: str) -> None:
@@ -261,5 +398,18 @@ class ClassificationRepository:
             print(f"Deleted classification file: {file_path}")
         else:
             print(f"Classification {classification_name}.json not found in {group_name}")
+
+    # ----------------------------------------------------------------
+    def list_classification_names(self, group_name: str) -> List[str]:
+        """List all classification filename stems in a group."""
+        group_path = os.path.join(self.base_path, group_name)
+        if not os.path.isdir(group_path):
+            return []
+
+        out: List[str] = []
+        for fn in os.listdir(group_path):
+            if fn.endswith(".json"):
+                out.append(os.path.splitext(fn)[0])
+        return out
 
 ##################################################################
