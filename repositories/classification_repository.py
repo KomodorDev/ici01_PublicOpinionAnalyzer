@@ -359,7 +359,6 @@ class ClassificationRepository:
 
 
         data = asdict(classification)
-        data.pop("name", None)  # <-- critical: avoid double truth
 
         # Write classification data to JSON file and overwrite if it exists:
         with open(file_path, "w", encoding="utf-8") as f:
