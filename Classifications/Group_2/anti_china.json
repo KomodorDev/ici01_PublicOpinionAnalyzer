@@ -1,5 +1,4 @@
 {
-  "name": "anti_china",
   "question": "Is the comment anti-China?",
   "explanation": "This classification determines whether the comment expresses support for Taiwan (pro-Taiwan), opposition (pro-China), or takes a neutral or ambiguous stance.",
   "output_type": "categorical",
