@@ -140,11 +140,6 @@ class ClassificationView:
         # -----------------------------
         # Local helpers for dynamic UI
         # -----------------------------
-        def _set_indicator(cat: str, text: str, state: dict):
-            state = dict(state or {})
-            state[cat] = text
-            return state
-
         def _norm_out_type(x):
             # supports enums or plain strings
             return getattr(x, "value", x)
@@ -784,6 +779,7 @@ class ClassificationView:
                 old_group_name_state,
                 old_class_name_state,
                 categories_state,
+                
             ],
         )
 
@@ -978,10 +974,6 @@ class ClassificationView:
 
             indicator_vals comes from indicator_boxes in cats order.
             """
-            print("DEBUG - handle_save_classification")
-            print(original_name)
-            print(name)
-            print("State:")
 
             gname = (current_group_name or "").strip()
             if not gname:
@@ -1058,10 +1050,6 @@ class ClassificationView:
                     selected.indicators_text_by_cat if selected else {}
                 ),  # 11 indicators_state
             )
-
-        def _indicator_inputs_in_cat_order(cats: List[str]):
-            """Return list of indicator textboxes matching cats order."""
-            return [indicator_boxes[c] for c in (cats or []) if c in indicator_boxes]
 
         save_class_btn.click(  # pylint: disable=no-member
             fn=_handle_save_classification,
@@ -1142,6 +1130,7 @@ class ClassificationView:
                     gr.skip(),  # old_group_name_state
                     gr.skip(),  # old_class_name_state
                     gr.skip(),  # categories_state
+                    gr.skip(),  # indicators_state
                 )
 
             # Translate UI label -> real logical name
