@@ -13,7 +13,8 @@ langchain-openai>=0.2.0       # LangChain OpenAI integration
 openai>=1.50.0                # OpenAI API client
 
 # Optional: Uncomment if using Google Gemini
-# langchain-google-genai>=2.0.0
+langchain-google-genai>=2.0.0
+google-genai
 
 # ==================== Web Interface ====================
 gradio>=4.0.0                 # Web UI framework
