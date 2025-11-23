@@ -79,6 +79,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from enums.classification_output_enum import ClassificationOutputEnum
 from models.view_models.classification import ClassificationTabViewModel, ClassificationGroupListViewModel, ClassificationGroupDetailViewModel, ClassificationViewModel
 from models.domain import ClassificationGroup
 from views.classification_view import ClassificationView
@@ -409,6 +410,14 @@ class ClassificationController:
 
         new_name = (class_vm.name or "").strip()
         old_name = class_vm.original_name.strip() if class_vm.original_name else None
+
+        # Normalize output type and clear categorical fields if needed
+        out_type_norm = getattr(class_vm.output_type, "value", class_vm.output_type)
+
+        if out_type_norm != ClassificationOutputEnum.CATEGORICAL.value:
+            class_vm.allow_multiple = False
+            class_vm.categories_text = ""
+            class_vm.indicators_text_by_cat = {}
 
         # 1) Build domain object from VM
         domain_c = self.mapper.classification_view_model_to_classification(class_vm)
