@@ -864,7 +864,7 @@ class ClassificationView:
                 first_c.indicators_text_by_cat if first_c else {},  # indicators_state
             )
 
-        delete_group_btn.click(
+        delete_group_btn.click( # pylint: disable=no-member
             fn=_handle_delete_group_clicked,
             inputs=[group_name_tb],  # current group name
             outputs=[
@@ -938,7 +938,7 @@ class ClassificationView:
                 class_vm.indicators_text_by_cat or {},  # LOAD indicators into state
             )
 
-        classifications_radio.change(
+        classifications_radio.change(   # pylint: disable=no-member
             fn=_handle_classification_click,
             inputs=[classifications_radio, group_name_tb],
             outputs=[
