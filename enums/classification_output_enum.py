@@ -54,3 +54,6 @@ class ClassificationOutputEnum(str, Enum):
     CATEGORICAL = "categorical"   # One of N configured categories ("positive", "neutral", "negative", "None")
     TEXT = "text"                 # Free-form string or explanation ("None"if uncertain)
     # PAIRWISE = "pairwise"         # Mapping or entity/value pairs—dict or list of (key, value) such as {"country": bool}
+
+    def __str__(self) -> str:
+        return self.value
