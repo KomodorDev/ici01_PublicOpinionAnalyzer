@@ -14,7 +14,7 @@ Responsibilities:
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from enums.classification_output_enum import ClassificationOutputEnum
 from models.domain import ClassificationGroup, Classification, Label
@@ -83,6 +83,93 @@ class ClassificationService:
         return self.repository.list_classification_group_names()
 
     # ----------------------------------------------------------------
+    def rename_classification_group(self, old_name: str, new_name: str) -> None:
+        """
+        Business-logic wrapper for renaming a classification group.
+
+        This performs *all* semantic validation and delegates the actual
+        filesystem-level rename to the repository.
+
+        WHY this belongs here (and not in the repo):
+        --------------------------------------------
+        - The repo must NOT contain business rules.
+        - Only the service knows what constitutes a *valid* group name.
+        - Only the service can give user-friendly error messages.
+        - The controller should rely on this method to decide success/failure.
+
+        What this method validates:
+        ---------------------------
+        - old_name must exist
+        - new_name must not be empty / whitespace
+        - new_name must differ from old_name
+        - new_name must not already exist as another classification group
+
+        After passing these checks, the repository performs the actual rename.
+
+        Args:
+            old_name: Current folder name of the classification group.
+            new_name: Requested new folder name.
+
+        Raises:
+            ValueError:
+                If the new name is invalid or conflicts with business rules.
+            FileNotFoundError:
+                If the original group doesn't exist.
+            FileExistsError:
+                If the target folder already exists (repo-level).
+            OSError:
+                For any filesystem error during rename.
+        """
+        old_name = (old_name or "").strip()
+        new_name = (new_name or "").strip()
+
+        # ------------------------------------------------------------
+        # 1) Validate input semantics
+        # ------------------------------------------------------------
+        if not old_name:
+            raise ValueError("Old group name cannot be empty.")
+
+        if not new_name:
+            raise ValueError("New group name cannot be empty.")
+
+        if old_name == new_name:
+            raise ValueError("New group name must be different.")
+
+        # ------------------------------------------------------------
+        # 2) Ensure the old group exists
+        # ------------------------------------------------------------
+        existing_groups = self.repository.list_classification_group_names()
+        if old_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{old_name}' does not exist.")
+
+        # ------------------------------------------------------------
+        # 3) Prevent name collisions
+        # ------------------------------------------------------------
+        if new_name in existing_groups:
+            raise ValueError(
+                f"A classification group named '{new_name}' already exists."
+            )
+
+        # ------------------------------------------------------------
+        # 4) Delegate to repository for atomic filesystem rename
+        # ------------------------------------------------------------
+        self.repository.rename_classification_group(old_name, new_name)
+
+
+    # ----------------------------------------------------------------
+    def create_classification_group(self, group_name: str) -> None:
+        """Create a new classification group."""
+        name = (group_name or "").strip()
+        if not name:
+            raise ValueError("Group name cannot be empty.")
+
+        existing = self.repository.list_classification_group_names()
+        if name in existing:
+            raise ValueError(f"Group '{name}' already exists.")
+
+        self.repository.create_classification_group(name)
+
+    # ----------------------------------------------------------------
     def save_classification_group(self, group: ClassificationGroup) -> None:
         """Save a classification group."""
         self.repository.save_classification_group(group)
@@ -91,6 +178,218 @@ class ClassificationService:
     def delete_classification_group(self, group_name: str) -> None:
         """Delete a classification group."""
         self.repository.delete_classification_group(group_name)
+
+    # ================================================================
+    # CRUD Operations — Classifications (inside a group)
+    # ================================================================
+    # ----------------------------------------------------------------
+    def list_classification_names(self, group_name: str) -> List[str]:
+        """
+        List all classification names (filename stems) in a given group.
+
+        Args:
+            group_name: Classification group folder name.
+
+        Returns:
+            List of classification names (no ".json").
+
+        Raises:
+            FileNotFoundError: If group does not exist.
+        """
+        group_name = (group_name or "").strip()
+        if not group_name:
+            raise ValueError("Group name cannot be empty.")
+
+        existing_groups = self.repository.list_classification_group_names()
+        if group_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{group_name}' does not exist.")
+
+        return self.repository.list_classification_names(group_name)
+
+    # ----------------------------------------------------------------
+    def load_classification(self, group_name: str, classification_name: str) -> Classification:
+        """
+        Load a single classification from a group.
+
+        Args:
+            group_name: Group folder name.
+            classification_name: Classification name (filename stem).
+
+        Returns:
+            Classification domain object.
+
+        Raises:
+            ValueError: If inputs are empty.
+            FileNotFoundError: If group or classification does not exist.
+        """
+        group_name = (group_name or "").strip()
+        classification_name = (classification_name or "").strip()
+
+        if not group_name:
+            raise ValueError("Group name cannot be empty.")
+        if not classification_name:
+            raise ValueError("Classification name cannot be empty.")
+
+        # ensure group exists
+        existing_groups = self.repository.list_classification_group_names()
+        if group_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{group_name}' does not exist.")
+
+        return self.repository.load_classification(group_name, classification_name)
+
+    # ----------------------------------------------------------------
+    def delete_classification(self, group_name: str, classification_name: str) -> None:
+        """
+        Delete a classification file from a group.
+
+        Args:
+            group_name: Group folder name.
+            classification_name: Classification name (filename stem).
+
+        Raises:
+            ValueError: If inputs are empty.
+            FileNotFoundError: If group or classification does not exist.
+        """
+        group_name = (group_name or "").strip()
+        classification_name = (classification_name or "").strip()
+
+        if not group_name:
+            raise ValueError("Group name cannot be empty.")
+        if not classification_name:
+            raise ValueError("Classification name cannot be empty.")
+
+        existing_groups = self.repository.list_classification_group_names()
+        if group_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{group_name}' does not exist.")
+
+        existing_cls = self.repository.list_classification_names(group_name)
+        if classification_name not in existing_cls:
+            raise FileNotFoundError(
+                f"Classification '{classification_name}' does not exist in group '{group_name}'."
+            )
+
+        self.repository.delete_classification(group_name, classification_name)
+
+    # ----------------------------------------------------------------
+    def rename_classification(self, group_name: str, old_name: str, new_name: str) -> None:
+        """
+        Rename a classification file within a group.
+
+        Args:
+            group_name: Group folder name.
+            old_name: Current classification name (filename stem).
+            new_name: Desired new classification name (filename stem).
+
+        Raises:
+            ValueError: If names are empty or unchanged.
+            FileNotFoundError: If group or old classification does not exist.
+            ValueError: If new classification already exists.
+        """
+        group_name = (group_name or "").strip()
+        old_name = (old_name or "").strip()
+        new_name = (new_name or "").strip()
+
+        if not group_name:
+            raise ValueError("Group name cannot be empty.")
+        if not old_name:
+            raise ValueError("Old classification name cannot be empty.")
+        if not new_name:
+            raise ValueError("New classification name cannot be empty.")
+        if old_name == new_name:
+            raise ValueError("New classification name must be different.")
+
+        existing_groups = self.repository.list_classification_group_names()
+        if group_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{group_name}' does not exist.")
+
+        existing_cls = self.repository.list_classification_names(group_name)
+        if old_name not in existing_cls:
+            raise FileNotFoundError(
+                f"Classification '{old_name}' does not exist in group '{group_name}'."
+            )
+        if new_name in existing_cls:
+            raise ValueError(
+                f"Cannot rename to '{new_name}': classification already exists in '{group_name}'."
+            )
+
+        self.repository.rename_classification(group_name, old_name, new_name)
+
+    # ----------------------------------------------------------------
+    def save_classification(
+        self,
+        group_name: str,
+        original_name: Optional[str],
+        classification: Classification,
+    ) -> None:
+        """
+        Save a classification (create / update / rename+update).
+
+        Rules:
+        - original_name is None/empty -> CREATE
+        - original_name == classification.name -> UPDATE
+        - original_name != classification.name -> RENAME then UPDATE
+
+        Args:
+            group_name: Group folder name.
+            original_name: Previous filename stem (from UI state), or None for create.
+            classification: Updated Classification domain object.
+
+        Raises:
+            ValueError: For invalid names or collisions.
+            FileNotFoundError: If group or original classification missing.
+        """
+        group_name = (group_name or "").strip()
+        if not group_name:
+            raise ValueError("Group name cannot be empty.")
+
+        new_name = (classification.name or "").strip()
+        if not new_name:
+            raise ValueError("Classification name cannot be empty.")
+
+        existing_groups = self.repository.list_classification_group_names()
+        if group_name not in existing_groups:
+            raise FileNotFoundError(f"Classification group '{group_name}' does not exist.")
+
+        existing_cls = self.repository.list_classification_names(group_name)
+
+        original_name_clean = (original_name or "").strip() or None
+
+        # -------------------------
+        # CREATE
+        # -------------------------
+        if original_name_clean is None:
+            if new_name in existing_cls:
+                raise ValueError(
+                    f"Classification '{new_name}' already exists in group '{group_name}'."
+                )
+            self.repository.save_classification(group_name, classification)
+            return
+
+        # -------------------------
+        # UPDATE (name unchanged)
+        # -------------------------
+        if original_name_clean == new_name:
+            if original_name_clean not in existing_cls:
+                raise FileNotFoundError(
+                    f"Classification '{original_name_clean}' does not exist in group '{group_name}'."
+                )
+            self.repository.save_classification(group_name, classification)
+            return
+
+        # -------------------------
+        # RENAME + UPDATE
+        # -------------------------
+        if original_name_clean not in existing_cls:
+            raise FileNotFoundError(
+                f"Classification '{original_name_clean}' does not exist in group '{group_name}'."
+            )
+        if new_name in existing_cls:
+            raise ValueError(
+                f"Cannot rename to '{new_name}': classification already exists in '{group_name}'."
+            )
+
+        self.repository.rename_classification(group_name, original_name_clean, new_name)
+        self.repository.save_classification(group_name, classification)
 
     # ================================================================
     # Prompt Helpers
