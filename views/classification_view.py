@@ -1,76 +1,58 @@
 """
 classification_view.py
-=======================
+======================
 
-This module renders the complete Gradio UI for creating, editing and deleting
-Classification Groups and individual Classifications.
+Gradio view for managing Classification Groups and their Classifications.
 
-The UI is intentionally built in a *static layout* style:
-- All input components are created once during page load.
-- All dynamic behavior is implemented by updating component values/visibility
-  through Gradio .update() calls.
+Core idea
+---------
+This UI uses a **static layout**:
+- All Gradio components are created once at render time.
+- Dynamic behavior is handled only via `.update()` / `gr.State`.
 - No components are created or destroyed after the initial render.
 
-Why this matters:
------------------
-Gradio re-renders the UI when the user interacts with it.
-If components were created dynamically, their references would break and the
-view would lose state. This implementation avoids that problem by using a
-"fixed pool" of textboxes for indicators and updating only their visibility
-and content.
+Reason
+------
+Gradio may re-render blocks on interaction. If components were built
+dynamically, their Python references would change and state would desync.
+A static component pool avoids "component not found" and lost-state bugs.
 
-What the view shows:
+What the UI contains
 --------------------
-1. A dropdown listing all Classification Groups (+ a sentinel to create a new one).
-2. A set of text fields to edit the group's name.
-3. A list of classifications inside the selected group.
-4. A detailed editor for a single classification:
+1. Group dropdown (including a "create new group" sentinel option).
+2. Group name editor + save/delete buttons.
+3. Radio list of classifications in the selected group
+   (including "add new classification" sentinel).
+4. Classification editor fields:
    - name, question, explanation
-   - output type (categorical / boolean / numeric / text)
-   - category list (for categorical types)
-   - a fixed pool of indicator textboxes (max 40), where each textbox is mapped
-     to one category when visible.
+   - output type
+   - categorical-only settings: categories textbox + allow-multiple checkbox
+   - indicators editor (see below)
 
-How indicators work:
---------------------
-Indicators cannot be created dynamically.
-Instead, this file pre-builds 40 invisible textboxes.
-When categories change, a refresh function:
-- shows only the needed textboxes
-- assigns correct labels (e.g. "Indicators for 'pro'")
-- fills each box with its saved text from indicators_state
-- hides the unused boxes
+Indicators editor (fixed pool)
+------------------------------
+Indicators are categorical-only. Because Gradio components cannot be created
+reliably on demand, this module pre-builds `MAX_CATS` textbox slots.
 
-This avoids all "component not found" errors that Gradio causes when trying to
-generate widgets dynamically.
+When categories or output type change, `_refresh_indicator_boxes(...)`:
+- hides all boxes if output type is not categorical
+- shows exactly one box per category otherwise
+- sets labels like "Indicators for '<category>'"
+- fills each visible box from `indicators_state`
+- updates `indicator_keys_state` to keep textbox index ↔ category mapping stable
 
-Internal state:
----------------
-The UI maintains several gr.State objects:
-- old_group_name_state: remembers original group name for rename detection
-- old_class_name_state: remembers original classification name
-- categories_state: the parsed list of category strings
-- indicators_state: dict mapping category -> indicators text
-- indicator_keys_state: order of categories mapped to the fixed indicator pool
+Internal state
+--------------
+The view maintains these `gr.State` objects:
+- old_group_name_state: original group name for rename detection
+- old_class_name_state: original classification name for rename detection
+- categories_state: list of category strings (parsed from categories textbox)
+- indicators_state: dict[str, str] mapping category → indicators text
+- indicator_keys_state: category order aligned with the fixed textbox pool
 
-All handlers always update these state objects explicitly.
-Any mismatch between the number of returned outputs and the number of expected
-outputs will break the UI, so every callback must return the exact number
-of outputs the wiring expects.
-
-Where things can go wrong:
---------------------------
-- If a handler returns fewer outputs than declared in .change()/.click(),
-  Gradio will silently inject Nones and the indicators will stop updating.
-- If the category list is inconsistent with indicators_state, the mapping
-  between categories and indicator textboxes will fail.
-- If indicator_keys_state is not updated whenever categories_state changes,
-  typing in indicator boxes will write to the wrong category.
-- If output_type != "categorical", the indicators must be hidden; forgetting
-  to trigger _refresh_indicator_boxes() leads to leftover visible boxes.
-
-This file provides the view only. All persistence, validation and actual
-business logic happen in the controller layer via:
+Callbacks and boundaries
+------------------------
+This file renders UI only. Persistence and validation live in controllers:
 - on_group_changed
 - on_save_group_clicked
 - on_group_delete_clicked
@@ -78,11 +60,9 @@ business logic happen in the controller layer via:
 - on_save_classification_clicked
 - on_remove_classification_clicked
 
-These callbacks return view models (ClassificationGroupDetailViewModel,
-ClassificationViewModel) which the view then reflects into the UI.
+Each callback must return **exactly** the number of outputs declared in wiring.
+If an output count mismatches, Gradio injects `None` and the editor desynchronizes.
 
-Always keep wiring strict and consistent – this UI is extremely sensitive
-to the number and order of outputs.
 """
 
 from __future__ import annotations
@@ -90,16 +70,13 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 import gradio as gr
 
-from models.view_models.classification.classification_group_detail_view_model import (
-    ClassificationGroupDetailViewModel,
-)
-from models.view_models.classification.classification_view_model import (
-    ClassificationViewModel,
+from models.view_models.classification import (
+    ClassificationGroupDetailViewModel, ClassificationViewModel
 )
 
-from enums.classification_output_enum import ClassificationOutputEnum
+from enums import ClassificationOutputEnum
 
-
+##################################################################
 class ClassificationView:
     """
     Gradio view for creating/editing ClassificationGroups and their Classifications.
@@ -135,20 +112,22 @@ class ClassificationView:
         """
         Render Classification management view.
         """
+        GROUP_CREATE_SENTINEL = "➕ Create new group…"
+        CLASS_CREATE_SENTINEL = "➕ Add new classification…"
+
+        classification_index: dict[str, str] = {}
 
         # -----------------------------
         # Local helpers for dynamic UI
         # -----------------------------
-        def _norm_out_type(x):
-            # supports enums or plain strings
-            return getattr(x, "value", x)
-
+        # ---------------------------------------------------------
         def _parse_categories(text: str) -> List[str]:
             return [c.strip() for c in (text or "").split("\n") if c.strip()]
 
+        # ---------------------------------------------------------
         def _sync_categorical_ui(out_type):
             is_cat = (
-                _norm_out_type(out_type) == ClassificationOutputEnum.CATEGORICAL.value
+                str(out_type) == ClassificationOutputEnum.CATEGORICAL.value
             )
 
             categories_vis = gr.update(visible=is_cat)
@@ -159,24 +138,19 @@ class ClassificationView:
 
             return categories_vis, categories_val, allow_mult_vis, allow_mult_val
 
-        def _on_categories_change(text: str):
-            return _parse_categories(text)
-
-        # Maps "radio label" -> classification name
-        classification_index: dict[str, str] = {}
-
-        # indicator_boxes: Dict[str, gr.Textbox] = {}
-
-        GROUP_CREATE_SENTINEL = "➕ Create new group…"
-        CLASS_CREATE_SENTINEL = "➕ Add new classification…"
-
         # ---------------------------------------------------------
-        def _build_class_radio(detail_vm: Optional[ClassificationGroupDetailViewModel]):
+        def _build_class_radio(
+            detail_vm: Optional[ClassificationGroupDetailViewModel],
+            selected_name: Optional[str] = None,
+        ):
             """
             Build radio labels + update classification_index mapping.
             Returns (choices, value).
+
+            If selected_name is provided and exists, keep that selection.
             """
             class_labels: List[str] = []
+            name_to_label: dict[str, str] = {}
             classification_index.clear()
 
             if detail_vm and detail_vm.classifications:
@@ -186,10 +160,73 @@ class ClassificationView:
                     label = f"{c.name} — {short_q}".strip(" —")
                     class_labels.append(label)
                     classification_index[label] = c.name
+                    name_to_label[c.name] = label
 
             choices = [CLASS_CREATE_SENTINEL] + class_labels
+
+            # default selection = first real classification
             value = class_labels[0] if class_labels else None
+
+            # override if caller wants a specific classification
+            if selected_name:
+                preferred_label = name_to_label.get(selected_name)
+                if preferred_label in class_labels:
+                    value = preferred_label
+
             return choices, value
+
+        # ---------------------------------------------------------
+        def _indicator_box_change(
+            idx: int, text: str, keys: List[str], state: dict
+        ):
+            keys = keys or []
+            state = dict(state or {})
+            if idx < len(keys):
+                cat = keys[idx]
+                state[cat] = text
+            return state
+
+        # ---------------------------------------------------------
+        def _refresh_indicator_boxes(out_type, cats, indicators_dict):
+            is_cat = str(out_type) == ClassificationOutputEnum.CATEGORICAL.value
+            cats = cats or []
+
+            # markdown only if categorical AND at least 1 category
+            show_md = is_cat and len(cats) > 0
+
+            # non-categorical => hide everything + hide markdown
+            if not is_cat:
+                updates = [
+                    gr.update(visible=False, value="")
+                    for _ in range(MAX_CATS)
+                ]
+                return (
+                    *updates,
+                    [],                            # indicator_keys_state
+                    gr.update(visible=False),      # indicators_md  <-- THIS WAS MISSING
+                )
+
+            indicators_dict = indicators_dict or {}
+
+            updates = []
+            for i in range(MAX_CATS):
+                if i < len(cats):
+                    cat = cats[i]
+                    updates.append(
+                        gr.update(
+                            visible=True,
+                            label=f"Indicators for '{cat}' (one per line)",
+                            value=indicators_dict.get(cat, ""),
+                        )
+                    )
+                else:
+                    updates.append(gr.update(visible=False, value=""))
+
+            return (
+                *updates,
+                cats,                         # indicator_keys_state
+                gr.update(visible=show_md),   # indicators_md
+            )
 
         # ---------------------------------------------------------
         def _fields_to_class_vm(
@@ -238,9 +275,9 @@ class ClassificationView:
         )
 
         initial_out_type = (
-            _norm_out_type(selected_class_vm.output_type)
+            str(selected_class_vm.output_type)
             if selected_class_vm and selected_class_vm.output_type
-            else ClassificationOutputEnum.CATEGORICAL.value
+            else str(ClassificationOutputEnum.CATEGORICAL)
         )
         initial_is_cat = initial_out_type == ClassificationOutputEnum.CATEGORICAL.value
         initial_categories = (
@@ -331,7 +368,7 @@ class ClassificationView:
                         interactive=True,
                     )
 
-                    # ✅ enum-driven choices
+                    # enum-driven choices
                     output_type_choices = [e.value for e in ClassificationOutputEnum]
 
                     output_type_dd = gr.Dropdown(
@@ -349,7 +386,7 @@ class ClassificationView:
                             if selected_class_vm
                             else False
                         ),
-                        visible=initial_is_cat,  # ✅ correct initial visibility
+                        visible=initial_is_cat,  # correct initial visibility
                         interactive=True,
                     )
 
@@ -372,7 +409,7 @@ class ClassificationView:
                             else ""
                         ),
                         lines=5,
-                        visible=initial_is_cat,  # ✅ correct initial visibility
+                        visible=initial_is_cat,  # correct initial visibility
                         interactive=True,
                     )
 
@@ -388,7 +425,7 @@ class ClassificationView:
                         selected_class_vm.original_name if selected_class_vm else ""
                     )
 
-                    # ✅ initialize from current VM so indicators show on first render
+                    # initialize from current VM so indicators show on first render
                     categories_state = gr.State(initial_categories)
 
                     indicators_state = gr.State(
@@ -412,7 +449,10 @@ class ClassificationView:
                     indicator_keys_state = gr.State(initial_keys)
 
                     indicator_tbs: List[gr.Textbox] = []
-                    gr.Markdown("#### Indicators per category")
+                    indicators_md = gr.Markdown(
+                        "#### Indicators per category",
+                        visible=initial_is_cat and len(initial_categories) > 0,  # only show at start if categorical
+                    )
 
                     for i in range(MAX_CATS):
                         if i < len(initial_keys):
@@ -434,16 +474,6 @@ class ClassificationView:
                             )
                         indicator_tbs.append(tb)
 
-                    def _indicator_box_change(
-                        idx: int, text: str, keys: List[str], state: dict
-                    ):
-                        keys = keys or []
-                        state = dict(state or {})
-                        if idx < len(keys):
-                            cat = keys[idx]
-                            state[cat] = text
-                        return state
-
                     for i, tb in enumerate(indicator_tbs):
                         tb.change(
                             fn=lambda text, keys, state, i=i: _indicator_box_change(
@@ -453,49 +483,17 @@ class ClassificationView:
                             outputs=[indicators_state],
                         )
 
-                    def _refresh_indicator_boxes(out_type, cats, indicators_dict):
-                        # non-categorical => hide everything
-                        if (
-                            _norm_out_type(out_type)
-                            != ClassificationOutputEnum.CATEGORICAL.value
-                        ):
-                            updates = [
-                                gr.update(visible=False, value="")
-                                for _ in range(MAX_CATS)
-                            ]
-                            return (*updates, [])
-
-                        cats = cats or []
-                        indicators_dict = indicators_dict or {}
-
-                        updates = []
-                        for i in range(MAX_CATS):
-                            if i < len(cats):
-                                cat = cats[i]
-                                updates.append(
-                                    gr.update(
-                                        visible=True,
-                                        label=f"Indicators for '{cat}' (one per line)",
-                                        value=indicators_dict.get(cat, ""),
-                                    )
-                                )
-                            else:
-                                updates.append(gr.update(visible=False, value=""))
-
-                        return (
-                            *updates,
-                            cats,
-                        )  # last output updates indicator_keys_state
 
                     # ---- action buttons (STATIC) ----
                     with gr.Row():
                         save_class_btn = gr.Button(
                             "Save Classification", variant="primary"
                         )
+                        reset_class_btn = gr.Button("Reset Changes", variant="secondary")
+                    with gr.Row():
                         remove_class_btn = gr.Button(
-                            "Remove Selected Classification", variant="stop"
+                            "Delete Selected Classification", variant="stop"
                         )
-
         # ================================================================
         # Wiring ONLY for the dynamic categorical UI
         # ================================================================
@@ -515,12 +513,12 @@ class ClassificationView:
         output_type_dd.change(  # pylint: disable=no-member
             fn=_refresh_indicator_boxes,
             inputs=[output_type_dd, categories_state, indicators_state],
-            outputs=[*indicator_tbs, indicator_keys_state],
+            outputs=[*indicator_tbs, indicator_keys_state, indicators_md],
         )
 
         # update categories_state when categories_tb changes
         categories_tb.change(  # pylint: disable=no-member
-            fn=_on_categories_change,
+            fn=_parse_categories,
             inputs=[categories_tb],
             outputs=[categories_state],
         )
@@ -528,13 +526,13 @@ class ClassificationView:
         categories_tb.change(  # pylint: disable=no-member
             fn=_refresh_indicator_boxes,
             inputs=[output_type_dd, categories_state, indicators_state],
-            outputs=[*indicator_tbs, indicator_keys_state],
+            outputs=[*indicator_tbs, indicator_keys_state, indicators_md],
         )
 
         classifications_radio.change(  # pylint: disable=no-member
             fn=_refresh_indicator_boxes,
             inputs=[output_type_dd, categories_state, indicators_state],
-            outputs=[*indicator_tbs, indicator_keys_state],
+            outputs=[*indicator_tbs, indicator_keys_state, indicators_md],
         )
 
         # ================================================================
@@ -985,14 +983,14 @@ class ClassificationView:
             indicators_dict = indicators_dict or {}
             indicators_by_cat_vals = [indicators_dict.get(c, "") for c in (cats or [])]
 
-            out_type_norm = _norm_out_type(out_type)
+            out_type_norm = str(out_type)
 
             class_vm = _fields_to_class_vm(
                 name=name,
                 original_name=original_name,
                 question=question,
                 explanation=explanation,
-                out_type=_norm_out_type(out_type),
+                out_type=str(out_type),
                 allow_multiple=allow_multiple,
                 require_expl=require_expl,
                 categories_text=categories_text,
@@ -1011,7 +1009,7 @@ class ClassificationView:
                 return (gr.update(),) * 10
 
             # rebuild left list
-            radio_choices, radio_value = _build_class_radio(detail_vm)
+            radio_choices, radio_value = _build_class_radio(detail_vm, selected_name=class_vm.name)
 
             # select saved classification for right editor
             selected = None
@@ -1089,6 +1087,33 @@ class ClassificationView:
                 categories_state,
                 indicators_state,
             ],
+        )
+
+        # ---------------------------------------------------------
+        reset_chain = reset_class_btn.click( # pylint: disable=no-member
+            fn=_handle_classification_click,
+            inputs=[classifications_radio, group_name_tb],
+            outputs=[
+                class_name_tb,
+                class_question_tb,
+                class_explanation_tb,
+                output_type_dd,
+                allow_multiple_cb,
+                require_expl_cb,
+                categories_tb,
+                remove_class_btn,
+                # States
+                old_class_name_state,
+                categories_state,
+                indicators_state,
+            ],
+        )
+
+        # AFTER state refresh (above), repaint indicator textboxes
+        reset_chain.then(
+            fn=_refresh_indicator_boxes,
+            inputs=[output_type_dd, categories_state, indicators_state],
+            outputs=[*indicator_tbs, indicator_keys_state, indicators_md],
         )
 
         # ---------------------------------------------------------
@@ -1305,3 +1330,5 @@ class ClassificationView:
                 indicators_state,
             ],
         )
+
+        # ---------------------------------------------------------
