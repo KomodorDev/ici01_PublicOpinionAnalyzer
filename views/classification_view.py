@@ -9,11 +9,11 @@ The UI is intentionally built in a *static layout* style:
 - All input components are created once during page load.
 - All dynamic behavior is implemented by updating component values/visibility
   through Gradio .update() calls.
-- No components are created or destroyed after the initial render.  
+- No components are created or destroyed after the initial render.
 
 Why this matters:
 -----------------
-Gradio re-renders the UI when the user interacts with it.  
+Gradio re-renders the UI when the user interacts with it.
 If components were created dynamically, their references would break and the
 view would lose state. This implementation avoids that problem by using a
 "fixed pool" of textboxes for indicators and updating only their visibility
@@ -33,8 +33,8 @@ What the view shows:
 
 How indicators work:
 --------------------
-Indicators cannot be created dynamically.  
-Instead, this file pre-builds 40 invisible textboxes.  
+Indicators cannot be created dynamically.
+Instead, this file pre-builds 40 invisible textboxes.
 When categories change, a refresh function:
 - shows only the needed textboxes
 - assigns correct labels (e.g. "Indicators for 'pro'")
@@ -53,7 +53,7 @@ The UI maintains several gr.State objects:
 - indicators_state: dict mapping category -> indicators text
 - indicator_keys_state: order of categories mapped to the fixed indicator pool
 
-All handlers always update these state objects explicitly.  
+All handlers always update these state objects explicitly.
 Any mismatch between the number of returned outputs and the number of expected
 outputs will break the UI, so every callback must return the exact number
 of outputs the wiring expects.
@@ -84,7 +84,6 @@ ClassificationViewModel) which the view then reflects into the UI.
 Always keep wiring strict and consistent – this UI is extremely sensitive
 to the number and order of outputs.
 """
-
 
 from __future__ import annotations
 
@@ -403,7 +402,6 @@ class ClassificationView:
                     # -------------------------------------------------
                     MAX_CATS = 40  # adjust if you want more
 
-
                     initial_indicators_dict = (
                         selected_class_vm.indicators_text_by_cat
                         if (selected_class_vm and initial_is_cat)
@@ -436,8 +434,9 @@ class ClassificationView:
                             )
                         indicator_tbs.append(tb)
 
-
-                    def _indicator_box_change(idx: int, text: str, keys: List[str], state: dict):
+                    def _indicator_box_change(
+                        idx: int, text: str, keys: List[str], state: dict
+                    ):
                         keys = keys or []
                         state = dict(state or {})
                         if idx < len(keys):
@@ -445,19 +444,25 @@ class ClassificationView:
                             state[cat] = text
                         return state
 
-
                     for i, tb in enumerate(indicator_tbs):
                         tb.change(
-                            fn=lambda text, keys, state, i=i: _indicator_box_change(i, text, keys, state),
+                            fn=lambda text, keys, state, i=i: _indicator_box_change(
+                                i, text, keys, state
+                            ),
                             inputs=[tb, indicator_keys_state, indicators_state],
                             outputs=[indicators_state],
                         )
 
-
                     def _refresh_indicator_boxes(out_type, cats, indicators_dict):
                         # non-categorical => hide everything
-                        if _norm_out_type(out_type) != ClassificationOutputEnum.CATEGORICAL.value:
-                            updates = [gr.update(visible=False, value="") for _ in range(MAX_CATS)]
+                        if (
+                            _norm_out_type(out_type)
+                            != ClassificationOutputEnum.CATEGORICAL.value
+                        ):
+                            updates = [
+                                gr.update(visible=False, value="")
+                                for _ in range(MAX_CATS)
+                            ]
                             return (*updates, [])
 
                         cats = cats or []
@@ -477,9 +482,10 @@ class ClassificationView:
                             else:
                                 updates.append(gr.update(visible=False, value=""))
 
-                        return (*updates, cats)  # last output updates indicator_keys_state
-
-
+                        return (
+                            *updates,
+                            cats,
+                        )  # last output updates indicator_keys_state
 
                     # ---- action buttons (STATIC) ----
                     with gr.Row():
@@ -519,13 +525,13 @@ class ClassificationView:
             outputs=[categories_state],
         )
 
-        categories_tb.change(   # pylint: disable=no-member
+        categories_tb.change(  # pylint: disable=no-member
             fn=_refresh_indicator_boxes,
             inputs=[output_type_dd, categories_state, indicators_state],
             outputs=[*indicator_tbs, indicator_keys_state],
         )
 
-        classifications_radio.change(       # pylint: disable=no-member
+        classifications_radio.change(  # pylint: disable=no-member
             fn=_refresh_indicator_boxes,
             inputs=[output_type_dd, categories_state, indicators_state],
             outputs=[*indicator_tbs, indicator_keys_state],
@@ -575,7 +581,7 @@ class ClassificationView:
                 return (
                     gr.update(value=""),
                     gr.update(choices=empty_choices, value=None),
-                    gr.update(interactive=False),   # delete_group_btn
+                    gr.update(interactive=False),  # delete_group_btn
                     gr.update(value=""),
                     gr.update(value=""),
                     gr.update(value=""),
@@ -779,7 +785,6 @@ class ClassificationView:
                 old_group_name_state,
                 old_class_name_state,
                 categories_state,
-                
             ],
         )
 
@@ -902,7 +907,6 @@ class ClassificationView:
                     gr.update(value=False),  # require_expl_cb
                     gr.update(value=""),  # categories_tb
                     gr.update(interactive=False),
-
                     # States
                     "",  # old_class_name_state  (no old name in create)
                     [],  # categories_state
@@ -928,7 +932,6 @@ class ClassificationView:
                 gr.update(value=class_vm.require_llm_explanation),
                 gr.update(value=class_vm.categories_text),
                 gr.update(interactive=True),
-
                 # States
                 (class_vm.name),  # old_class_name_state
                 _parse_categories(class_vm.categories_text),  # categories_state
@@ -947,7 +950,6 @@ class ClassificationView:
                 require_expl_cb,
                 categories_tb,
                 remove_class_btn,
-
                 # States
                 old_class_name_state,
                 categories_state,
@@ -983,6 +985,8 @@ class ClassificationView:
             indicators_dict = indicators_dict or {}
             indicators_by_cat_vals = [indicators_dict.get(c, "") for c in (cats or [])]
 
+            out_type_norm = _norm_out_type(out_type)
+
             class_vm = _fields_to_class_vm(
                 name=name,
                 original_name=original_name,
@@ -995,6 +999,11 @@ class ClassificationView:
                 indicators_by_cat_vals=indicators_by_cat_vals,
                 cats=cats or [],
             )
+            # CLEANUP FOR NON-CATEGORICAL BEFORE SAVE
+            if out_type_norm != ClassificationOutputEnum.CATEGORICAL.value:
+                class_vm.allow_multiple = False
+                class_vm.categories_text = ""
+                class_vm.indicators_text_by_cat = {}
 
             # controller does create/update/rename logic
             detail_vm = on_save_classification_clicked(gname, class_vm)
@@ -1090,9 +1099,17 @@ class ClassificationView:
             - Call controller
             - Update left list + right editor based on returned detail VM
             """
+            print("\n=== REMOVE CLICK ===")
+            print(f"[IN ] group_name raw: {group_name!r}")
+            print(f"[IN ] selected_label raw: {selected_label!r}")
 
             gname = (group_name or "").strip()
+            print(f"[PARSE] gname stripped: {gname!r}")
+            print(f"[CHECK] GROUP_CREATE_SENTINEL: {GROUP_CREATE_SENTINEL!r}")
+            print(f"[CHECK] CLASS_CREATE_SENTINEL: {CLASS_CREATE_SENTINEL!r}")
+
             if not gname or gname == GROUP_CREATE_SENTINEL:
+                print("[BRANCH] invalid group -> early return (no-op)")
                 # Nothing valid selected
                 return (
                     gr.skip(),  # classifications_radio
@@ -1104,7 +1121,6 @@ class ClassificationView:
                     gr.skip(),  # require_expl_cb
                     gr.skip(),  # categories_tb
                     gr.update(interactive=False),
-
                     # States
                     gr.skip(),  # old_group_name_state
                     gr.skip(),  # old_class_name_state
@@ -1114,6 +1130,9 @@ class ClassificationView:
 
             # Sentinel or empty selection => no remove
             if not selected_label or selected_label == CLASS_CREATE_SENTINEL:
+                print(
+                    "[BRANCH] invalid/sentinel selected_label -> early return (no-op)"
+                )
                 gr.Warning("No classification selected to remove.")
                 return (
                     gr.skip(),  # classifications_radio
@@ -1125,7 +1144,6 @@ class ClassificationView:
                     gr.skip(),  # require_expl_cb
                     gr.skip(),  # categories_tb
                     gr.update(interactive=False),
-
                     # States
                     gr.skip(),  # old_group_name_state
                     gr.skip(),  # old_class_name_state
@@ -1135,7 +1153,9 @@ class ClassificationView:
 
             # Translate UI label -> real logical name
             cname = classification_index.get(selected_label)
+            print(f"[MAP ] classification_index.get({selected_label!r}) -> {cname!r}")
             if not cname:
+                print("[BRANCH] could not resolve label -> early return (no-op)")
                 gr.Warning("Could not resolve selected classification.")
                 return (
                     gr.skip(),  # classifications_radio
@@ -1147,7 +1167,6 @@ class ClassificationView:
                     gr.skip(),  # require_expl_cb
                     gr.skip(),  # categories_tb
                     gr.update(interactive=False),
-
                     # States
                     gr.skip(),  # old_group_name_state
                     gr.skip(),  # old_class_name_state
@@ -1156,10 +1175,17 @@ class ClassificationView:
                 )
 
             # Call controller
+            print(
+                f"[CALL] on_remove_classification_clicked(gname={gname!r}, cname={cname!r})"
+            )
             detail_vm = on_remove_classification_clicked(gname, cname)
+            print(f"[RET ] detail_vm is None? {detail_vm is None}")
+
             if detail_vm is None:
                 # Controller failed -> empty UI
+                print("[BRANCH] controller failed -> empty UI return")
                 empty_choices = [CLASS_CREATE_SENTINEL]
+                print(f"[OUT ] empty_choices: {empty_choices!r}")
                 return (
                     gr.update(choices=empty_choices, value=None),
                     gr.update(value=""),
@@ -1178,10 +1204,28 @@ class ClassificationView:
                 )
 
             # Rebuild left list
+            print(
+                f"[VM  ] num classifications: {len(detail_vm.classifications) if detail_vm.classifications else 0}"
+            )
+            print(f"[VM  ] selected_index: {detail_vm.selected_index!r}")
+            if detail_vm.classifications:
+                print(
+                    "[VM  ] remaining names:",
+                    [c.name for c in detail_vm.classifications],
+                )
+            else:
+                print("[VM  ] remaining names: []")
+
             radio_choices, radio_value = _build_class_radio(detail_vm)
+            print(f"[RAD ] radio_choices: {radio_choices!r}")
+            print(f"[RAD ] radio_value from builder: {radio_value!r}")
+            print(
+                f"[RAD ] radio_value in choices? {radio_value in (radio_choices or [])}"
+            )
 
             # Pick selected or first classification for editor
             sel_idx = detail_vm.selected_index or 0
+            print(f"[SEL ] sel_idx used: {sel_idx}")
             first_c = (
                 detail_vm.classifications[sel_idx]
                 if detail_vm.classifications
@@ -1190,6 +1234,19 @@ class ClassificationView:
                     detail_vm.classifications[0] if detail_vm.classifications else None
                 )
             )
+            print(f"[FIRST] first_c is None? {first_c is None}")
+            if first_c:
+                print(f"[FIRST] first_c.name: {first_c.name!r}")
+                print(f"[FIRST] first_c.output_type: {first_c.output_type!r}")
+            else:
+                print("[FIRST] first_c: None")
+
+            # --- This print shows the *potential mismatch* ---
+            print(
+                f"[OUT ] setting old_class_name_state to: {(first_c.name if first_c else '')!r}"
+            )
+            print(f"[OUT ] returning radio value: {radio_value!r}")
+            print("=== END REMOVE CLICK ===\n")
 
             return (
                 gr.update(
@@ -1220,10 +1277,8 @@ class ClassificationView:
                 ),  # categories_tb
                 gr.update(interactive=True),
                 # States
-                gr.update(value=gname),  # old_group_name_state
-                gr.update(
-                    value=first_c.name if first_c else ""
-                ),  # old_class_name_state
+                gname,                              # old_group_name_state
+                (first_c.name if first_c else ""),  # old_class_name_state
                 (
                     _parse_categories(first_c.categories_text) if first_c else []
                 ),  # categories_state
