@@ -115,7 +115,8 @@ class SettingsService:
         """
         Check if a provider is actually available by testing the connection.
         
-        This makes an actual API call to verify the key works.
+        For providers with implemented connection tests, this makes an actual API call.
+        For providers without connection tests, it checks if the API key or URL is configured.
         
         Args:
             provider_name: Provider identifier (e.g., "openai", "anthropic")
@@ -127,20 +128,34 @@ class SettingsService:
         # Get the provider and test connection
         try:
             if provider_name == "openai":
-
                 provider = OpenAIProvider(self)
                 return provider.test_connection()
 
             elif provider_name == "google":
-
                 provider = GoogleProvider(self)
                 return provider.test_connection()
 
             elif provider_name == "lmstudio":
-
                 provider = LMStudioProvider(self)
                 return provider.test_connection()
 
+            # For providers without connection test implementation,
+            # check if they are configured instead
+            elif provider_name in API_PROVIDERS:
+                # API provider without connection test - check if key is configured
+                if self.is_provider_configured(provider_name):
+                    return True, "API key configured (connection test not implemented)"
+                else:
+                    return False, "API key not configured"
+            
+            elif provider_name in LOCAL_PROVIDERS:
+                # Local provider without connection test - check if URL is configured
+                url = self.get_provider_url(provider_name)
+                if url:
+                    return True, f"URL configured: {url} (connection test not implemented)"
+                else:
+                    return False, "URL not configured"
+            
             else:
                 return False, f"Unknown provider: {provider_name}"
 

@@ -220,17 +220,17 @@ class SettingsView:
                         gr.update()  # Keep input unchanged
                     )
                 
-                # Call controller callback
+                # Call controller callback with the URL from the textfield
                 vm = on_provider_url_saved(provider_name, url)
                 status_icon = "✅" if vm.provider_statuses.get(provider_name, {}).get("available") else "⚠️"
                 
-                # Get updated URL from ViewModel
+                # Get updated URL from ViewModel (use saved URL, fallback to user input, then default)
                 if provider_name == "lmstudio":
-                    new_url = vm.lmstudio_url or default_url
+                    new_url = vm.lmstudio_url or url or default_url
                 elif provider_name == "ollama":
-                    new_url = vm.ollama_url or default_url
+                    new_url = vm.ollama_url or url or default_url
                 else:
-                    new_url = default_url
+                    new_url = url or default_url
                 
                 # Extract status message from ViewModel
                 provider_status = vm.provider_statuses.get(provider_name, {})
