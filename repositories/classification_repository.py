@@ -166,6 +166,9 @@ class ClassificationRepository:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        # Safeguard: JSON must not override the canonical name
+        data.pop("name", None)
+
         # Convert output_type to enum
         if "output_type" in data and isinstance(data["output_type"], str):
             data["output_type"] = ClassificationOutputEnum(data["output_type"])
@@ -357,8 +360,8 @@ class ClassificationRepository:
         # Make directory if it doesn't exist:
         os.makedirs(group_path, exist_ok=True)
 
-
-        data = asdict(classification)
+        # Convert classification to dict, excluding 'name' since it's derived from filename
+        data = {k: v for k, v in asdict(classification).items() if k != "name"}
 
         # Write classification data to JSON file and overwrite if it exists:
         with open(file_path, "w", encoding="utf-8") as f:
