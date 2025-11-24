@@ -1,0 +1,46 @@
+{
+  "id": "ftjob-Dgfnj3m8rWu4tSrHGQimWaAm",
+  "created_at": 1763975621,
+  "error": {
+    "code": null,
+    "message": null,
+    "param": null
+  },
+  "fine_tuned_model": "ft:gpt-4.1-2025-04-14:projectvyra:all-at-once-split-v1-seed42:CfNRAOl2",
+  "finished_at": 1763977573,
+  "hyperparameters": {
+    "batch_size": 1,
+    "learning_rate_multiplier": 2.0,
+    "n_epochs": 3
+  },
+  "model": "gpt-4.1-2025-04-14",
+  "object": "fine_tuning.job",
+  "organization_id": "org-dOTRamgeZTttZwK0NvpdUFA2",
+  "result_files": [
+    "file-WpfBo9HCSH6EvEreKgyR53"
+  ],
+  "seed": 934105985,
+  "status": "succeeded",
+  "trained_tokens": 666147,
+  "training_file": "file-UGY5DS71mMbYdaHjRgCEir",
+  "validation_file": null,
+  "estimated_finish": null,
+  "integrations": [],
+  "metadata": null,
+  "method": {
+    "type": "supervised",
+    "dpo": null,
+    "reinforcement": null,
+    "supervised": {
+      "hyperparameters": {
+        "batch_size": 1,
+        "learning_rate_multiplier": 2.0,
+        "n_epochs": 3
+      }
+    }
+  },
+  "user_provided_suffix": "all_at_once_split_v1_seed42",
+  "usage_metrics": null,
+  "shared_with_openai": false,
+  "eval_id": null
+}
