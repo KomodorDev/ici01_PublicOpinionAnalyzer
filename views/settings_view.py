@@ -74,79 +74,77 @@ class SettingsView:
         # ================================================================
         # LAYOUT
         # ================================================================
-        with gr.Blocks() as settings_ui:
-            gr.Markdown("## ⚙️ Advanced Settings")
-            gr.Markdown("Configure API keys and local provider URLs. Keys are masked for security.")
+        gr.Markdown("Configure API keys and local provider URLs. Keys are masked for security.")
 
-            # API Keys Section
-            gr.Markdown("### 🔑 API Keys")
-            gr.Markdown("*Enter new key to update. Masked keys (****) cannot be saved.*")
+        # API Keys Section
+        gr.Markdown("### API Keys")
+        gr.Markdown("*Enter new key to update. Masked keys (****) cannot be saved.*")
 
-            with gr.Group():
-                # OpenAI
-                openai_status = "✅" if view_model.provider_statuses.get("openai", {}).get("available") else "⚠️"
-                openai_input = gr.Textbox(
-                    label=f"{openai_status} OpenAI API Key",
-                    value=view_model.masked_api_keys.get("openai", "API_KEY"),
-                    placeholder="sk-proj-...",
-                )
-                openai_save_btn = gr.Button("Save OpenAI Key", size="sm")
-                openai_status_msg = gr.Markdown()
+        with gr.Group():
+            # OpenAI
+            openai_status = "✅" if view_model.provider_statuses.get("openai", {}).get("available") else "⚠️"
+            openai_input = gr.Textbox(
+                label=f"{openai_status} OpenAI API Key",
+                value=view_model.masked_api_keys.get("openai", "API_KEY"),
+                placeholder="sk-proj-...",
+            )
+            openai_save_btn = gr.Button("Save OpenAI Key", size="sm")
+            openai_status_msg = gr.Markdown()
 
-                # Anthropic
-                anthropic_status = "✅" if view_model.provider_statuses.get("anthropic", {}).get("available") else "⚠️"
-                anthropic_input = gr.Textbox(
-                    label=f"{anthropic_status} Anthropic API Key",
-                    value=view_model.masked_api_keys.get("anthropic", "API_KEY"),
-                    placeholder="sk-ant-...",
-                )
-                anthropic_save_btn = gr.Button("Save Anthropic Key", size="sm")
-                anthropic_status_msg = gr.Markdown()
+            # Anthropic
+            anthropic_status = "✅" if view_model.provider_statuses.get("anthropic", {}).get("available") else "⚠️"
+            anthropic_input = gr.Textbox(
+                label=f"{anthropic_status} Anthropic API Key",
+                value=view_model.masked_api_keys.get("anthropic", "API_KEY"),
+                placeholder="sk-ant-...",
+            )
+            anthropic_save_btn = gr.Button("Save Anthropic Key", size="sm")
+            anthropic_status_msg = gr.Markdown()
 
-                # Google
-                google_status = "✅" if view_model.provider_statuses.get("google", {}).get("available") else "⚠️"
-                google_input = gr.Textbox(
-                    label=f"{google_status} Google API Key (Gemini)",
-                    value=view_model.masked_api_keys.get("google", "API_KEY"),
-                    placeholder="AIza...",
-                )
-                google_save_btn = gr.Button("Save Google Key", size="sm")
-                google_status_msg = gr.Markdown()
+            # Google
+            google_status = "✅" if view_model.provider_statuses.get("google", {}).get("available") else "⚠️"
+            google_input = gr.Textbox(
+                label=f"{google_status} Google API Key (Gemini)",
+                value=view_model.masked_api_keys.get("google", "API_KEY"),
+                placeholder="AIza...",
+            )
+            google_save_btn = gr.Button("Save Google Key", size="sm")
+            google_status_msg = gr.Markdown()
 
-                # DeepSeek
-                deepseek_status = "✅" if view_model.provider_statuses.get("deepseek", {}).get("available") else "⚠️"
-                deepseek_input = gr.Textbox(
-                    label=f"{deepseek_status} DeepSeek API Key",
-                    value=view_model.masked_api_keys.get("deepseek", "API_KEY"),
-                    placeholder="sk-...",
-                )
-                deepseek_save_btn = gr.Button("Save DeepSeek Key", size="sm")
-                deepseek_status_msg = gr.Markdown()
+            # DeepSeek
+            deepseek_status = "✅" if view_model.provider_statuses.get("deepseek", {}).get("available") else "⚠️"
+            deepseek_input = gr.Textbox(
+                label=f"{deepseek_status} DeepSeek API Key",
+                value=view_model.masked_api_keys.get("deepseek", "API_KEY"),
+                placeholder="sk-...",
+            )
+            deepseek_save_btn = gr.Button("Save DeepSeek Key", size="sm")
+            deepseek_status_msg = gr.Markdown()
 
-            # Local Provider URLs Section
-            gr.Markdown("### 🖥️ Local Provider URLs")
-            gr.Markdown("*Configure base URLs for locally running model servers.*")
+        # Local Provider URLs Section
+        gr.Markdown("### Local Provider URLs")
+        gr.Markdown("*Configure base URLs for locally running model servers.*")
 
-            with gr.Group():
-                # LM Studio
-                lmstudio_status = "✅" if view_model.provider_statuses.get("lmstudio", {}).get("available") else "⚠️"
-                lmstudio_input = gr.Textbox(
-                    label=f"{lmstudio_status} LM Studio URL",
-                    value=view_model.lmstudio_url or "http://localhost:1234/v1",
-                    placeholder="http://localhost:1234/v1"
-                )
-                lmstudio_save_btn = gr.Button("Save LM Studio URL", size="sm")
-                lmstudio_status_msg = gr.Markdown()
+        with gr.Group():
+            # LM Studio
+            lmstudio_status = "✅" if view_model.provider_statuses.get("lmstudio", {}).get("available") else "⚠️"
+            lmstudio_input = gr.Textbox(
+                label=f"{lmstudio_status} LM Studio URL",
+                value=view_model.lmstudio_url or "http://localhost:1234/v1",
+                placeholder="http://localhost:1234/v1"
+            )
+            lmstudio_save_btn = gr.Button("Save LM Studio URL", size="sm")
+            lmstudio_status_msg = gr.Markdown()
 
-                # Ollama
-                ollama_status = "✅" if view_model.provider_statuses.get("ollama", {}).get("available") else "⚠️"
-                ollama_input = gr.Textbox(
-                    label=f"{ollama_status} Ollama URL",
-                    value=view_model.ollama_url or "http://localhost:11434",
-                    placeholder="http://localhost:11434"
-                )
-                ollama_save_btn = gr.Button("Save Ollama URL", size="sm")
-                ollama_status_msg = gr.Markdown()
+            # Ollama
+            ollama_status = "✅" if view_model.provider_statuses.get("ollama", {}).get("available") else "⚠️"
+            ollama_input = gr.Textbox(
+                label=f"{ollama_status} Ollama URL",
+                value=view_model.ollama_url or "http://localhost:11434",
+                placeholder="http://localhost:11434"
+            )
+            ollama_save_btn = gr.Button("Save Ollama URL", size="sm")
+            ollama_status_msg = gr.Markdown()
 
         # ================================================================
         # WIRING
