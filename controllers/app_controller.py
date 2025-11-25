@@ -45,8 +45,7 @@ class AppController:
         launches the interactive web UI.
         """
         with gr.Blocks(title="AI Public Opinion Analyzer") as demo:
-            rerender_tick = gr.State(0)  # 1) dummy state to force re-rendering views
-
+            
             # Analysis tab -------------------------------------------------------------------
             with gr.Tab("Analysis"):
                 self.analysis_controller.render_analysis_view()
@@ -60,21 +59,8 @@ class AppController:
                 self.prompt_template_controller.render_prompt_template_view()
 
             # Settings tab ----------------------------------------------------------
-            with gr.Tab("Settings") as adv_tab:
-                # 3) re-render when `rerender_tick` changes
-                @gr.render(inputs=[rerender_tick])
-                def _(_tick):
-                    # Your function builds the settings UI every time
-                    # the tab is selected (because _tick changes).
-                    self.settings_controller.render_settings_view()
-
-                # 2) bump state on tab selection
-                def _bump(n, data: gr.SelectData):
-                    # Only bump when THIS tab gets selected
-                    return (n or 0) + 1 if data.selected else n
-
-                adv_tab.select(fn=_bump, inputs=rerender_tick, outputs=rerender_tick)
-
+            with gr.Tab("Settings"):
+                self.settings_controller.render_settings_view()
         demo.launch()
 
     # ----------------------------------------------------------------
