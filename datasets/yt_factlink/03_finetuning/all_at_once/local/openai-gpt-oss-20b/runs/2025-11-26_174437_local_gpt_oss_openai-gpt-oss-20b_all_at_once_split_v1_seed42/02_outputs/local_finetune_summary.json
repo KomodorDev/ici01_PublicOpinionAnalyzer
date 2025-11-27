@@ -1,0 +1,19 @@
+{
+  "base_model": "openai/gpt-oss-20b",
+  "output_dir": "/var/lib/jenkins/ici01/ici01_PublicOpinionAnalyzer/datasets/yt_factlink/03_finetuning/all_at_once/local/openai-gpt-oss-20b/runs/2025-11-26_174437_local_gpt_oss_openai-gpt-oss-20b_all_at_once_split_v1_seed42/02_outputs/gpt-oss-20b-lora",
+  "num_train_epochs": 2,
+  "learning_rate": 0.0002,
+  "train_samples": 294,
+  "val_samples": 15,
+  "train_metrics": {
+    "train_runtime": 10287.308,
+    "train_samples_per_second": 0.057,
+    "train_steps_per_second": 0.004,
+    "total_flos": 5.195231162576179e+16,
+    "train_loss": 1.6280668158280223,
+    "entropy": 0.8473945429428018,
+    "num_tokens": 425624.0,
+    "mean_token_accuracy": 0.81401879495854,
+    "epoch": 2.0
+  }
+}
