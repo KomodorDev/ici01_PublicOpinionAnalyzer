@@ -19,5 +19,5 @@ Choose "No" when the evidence is insufficient.
 OUTPUT FORMAT (STRICT JSON)
 json
 {
-  "C4": "1/0",
+  "C4": "1/0"
 }
