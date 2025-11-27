@@ -179,6 +179,7 @@ class YouTubeFetcher(ContentFetcher):
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
+            "--ignore-no-formats-error",
             "--cookies-from-browser",
             "chrome",
             # Not using --write-comments, so no comments fetched
