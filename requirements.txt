@@ -32,7 +32,8 @@ typing-extensions>=4.8.0      # Extended typing support (TypedDict, etc.)
 
 # ==================== Data Processing ====================
 # Standard library modules used: json, dataclasses, abc, pathlib, re
-# No additional dependencies needed for data processing
+# Additional dependencies used for data processing / export
+openpyxl==3.1.5              # Excel export support (used by services/export_service.py)
 
 # ==================== Development & Testing ====================
 # Uncomment for development
