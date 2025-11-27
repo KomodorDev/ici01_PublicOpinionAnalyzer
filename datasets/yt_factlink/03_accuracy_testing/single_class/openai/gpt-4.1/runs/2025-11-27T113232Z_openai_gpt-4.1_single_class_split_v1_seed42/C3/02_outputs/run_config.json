@@ -1,0 +1,11 @@
+{
+  "dataset_id": "yt_factlink",
+  "experiment_type": "single_class",
+  "label": "C3",
+  "label_name": "Antipathy Toward Taiwan",
+  "provider": "openai",
+  "model_name": "gpt-4.1",
+  "data_jsonl": "datasets/yt_factlink/01_conversion/03_splits/split_v1_seed42/test.data.jsonl",
+  "prompt_dir": "datasets/yt_factlink/02_prompts/single_class/C3",
+  "timestamp": "2025-11-27T113232Z"
+}

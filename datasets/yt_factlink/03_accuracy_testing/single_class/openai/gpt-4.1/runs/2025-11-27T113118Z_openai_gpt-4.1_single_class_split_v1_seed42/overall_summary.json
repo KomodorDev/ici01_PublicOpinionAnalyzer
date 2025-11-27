@@ -1,0 +1,67 @@
+{
+  "C1": {
+    "failures": 1,
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0
+    }
+  },
+  "C2": {
+    "failures": 1,
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0
+    }
+  },
+  "C3": {
+    "failures": 1,
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0
+    }
+  },
+  "C4": {
+    "failures": 1,
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0
+    }
+  },
+  "C6": {
+    "failures": 1,
+    "metrics": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0
+    }
+  }
+}
