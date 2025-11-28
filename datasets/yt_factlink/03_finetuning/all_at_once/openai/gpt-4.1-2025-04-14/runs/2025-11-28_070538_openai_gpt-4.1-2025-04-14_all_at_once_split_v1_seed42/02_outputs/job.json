@@ -1,13 +1,13 @@
 {
-  "id": "ftjob-Dgfnj3m8rWu4tSrHGQimWaAm",
-  "created_at": 1763975621,
+  "id": "ftjob-7c0qtKRDL2Bd65UajOpBGdPy",
+  "created_at": 1764305685,
   "error": {
     "code": null,
     "message": null,
     "param": null
   },
-  "fine_tuned_model": "ft:gpt-4.1-2025-04-14:projectvyra:all-at-once-split-v1-seed42:CfNRAOl2",
-  "finished_at": 1763977573,
+  "fine_tuned_model": "ft:gpt-4.1-2025-04-14:projectvyra:all-at-once-split-v1-seed42:CglLpaSI",
+  "finished_at": 1764307827,
   "hyperparameters": {
     "batch_size": 1,
     "learning_rate_multiplier": 2.0,
@@ -17,12 +17,12 @@
   "object": "fine_tuning.job",
   "organization_id": "org-dOTRamgeZTttZwK0NvpdUFA2",
   "result_files": [
-    "file-WpfBo9HCSH6EvEreKgyR53"
+    "file-JpGrPozZnoLK9zTMwuVRJz"
   ],
-  "seed": 934105985,
+  "seed": 1565617053,
   "status": "succeeded",
-  "trained_tokens": 666147,
-  "training_file": "file-UGY5DS71mMbYdaHjRgCEir",
+  "trained_tokens": 689322,
+  "training_file": "file-P3VfyK3xsaJkyxWdC5PwD7",
   "validation_file": null,
   "estimated_finish": null,
   "integrations": [],
