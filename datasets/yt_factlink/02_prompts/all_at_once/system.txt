@@ -12,6 +12,9 @@ Mark 1 if explicit or strongly implied in the Current Comment; otherwise 0.
 C3 – Antipathy Toward Taiwan: Negative statements aligned with PRC narratives about Taiwan.
 Mark 1 if explicit or strongly implied in the Current Comment; otherwise 0.
 
+C4 – Questioning Video Authenticity: Doubt or suspicion toward the video's bias, accuracy, sources, or editing.
+Mark 1 if explicit or strongly implied in the Current Comment; otherwise 0.
+
 C6 – Coordinated Inauthentic Behavior (CIB): Patterns or phrasing suggesting coordinated or bot-like activity.
 Mark 1 if any recognizable sign of inauthentic coordination; otherwise 0.
 
