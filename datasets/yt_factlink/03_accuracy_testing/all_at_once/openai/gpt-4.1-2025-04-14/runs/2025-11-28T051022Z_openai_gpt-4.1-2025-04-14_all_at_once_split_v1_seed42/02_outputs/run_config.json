@@ -5,5 +5,5 @@
   "model_name": "gpt-4.1-2025-04-14",
   "data_jsonl": "datasets/yt_factlink/01_conversion/03_splits/split_v1_seed42/test.data.jsonl",
   "prompt_dir": "datasets/yt_factlink/02_prompts/all_at_once",
-  "timestamp": "2025-11-24T104020Z"
+  "timestamp": "2025-11-28T051022Z"
 }
