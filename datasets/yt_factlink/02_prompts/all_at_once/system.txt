@@ -24,7 +24,6 @@ Interpretation of categories should always account for the comment’s conversat
 Rules
 Always include video context in your reasoning.
 Analyze the comment itself with the video context.
-Comments are listed from oldest to newest; consider order and tagged users when interpreting replies.
 Assign a category only when clearly justified by the text/context linkage.
 Choose "No" when the evidence is insufficient.
 
