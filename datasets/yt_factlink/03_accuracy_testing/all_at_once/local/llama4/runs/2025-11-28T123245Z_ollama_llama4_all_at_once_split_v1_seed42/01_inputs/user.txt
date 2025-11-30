@@ -1,9 +1,0 @@
-Input
-Title:
-[VIDEOTITLE]
-
-Video Context:
-[VIDEOCONTEXT]
-
-Current Comment:
-[TARGETCOMMENT]
