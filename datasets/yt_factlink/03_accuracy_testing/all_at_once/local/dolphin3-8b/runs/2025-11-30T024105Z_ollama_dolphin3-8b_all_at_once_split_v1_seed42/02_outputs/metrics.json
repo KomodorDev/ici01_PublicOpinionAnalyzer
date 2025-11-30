@@ -1,0 +1,59 @@
+{
+  "failures": 0,
+  "overall": {
+    "macro_f1": 0.0,
+    "macro_accuracy": 0.8285714285714285
+  },
+  "per_label": {
+    "C1": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.5194805194805194,
+      "tp": 0,
+      "fp": 0,
+      "tn": 40,
+      "fn": 37
+    },
+    "C2": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.7792207792207793,
+      "tp": 0,
+      "fp": 0,
+      "tn": 60,
+      "fn": 17
+    },
+    "C3": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.8961038961038961,
+      "tp": 0,
+      "fp": 1,
+      "tn": 69,
+      "fn": 7
+    },
+    "C4": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.948051948051948,
+      "tp": 0,
+      "fp": 0,
+      "tn": 73,
+      "fn": 4
+    },
+    "C6": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 1.0,
+      "tp": 0,
+      "fp": 0,
+      "tn": 77,
+      "fn": 0
+    }
+  }
+}
