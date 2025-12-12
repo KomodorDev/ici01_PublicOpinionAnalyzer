@@ -100,7 +100,7 @@
 </head>
 <body>
 <h1>Accuracy Runs Overview</h1>
-<div class='meta'>Total runs: 10 &mdash; one row per run. Click <em>Show per-label metrics</em> on a row to see C1–C6 details.</div>
+<div class='meta'>Total runs: 12 &mdash; one row per run. Click <em>Show per-label metrics</em> on a row to see C1–C6 details.</div>
 <table>
 <tr><th>Timestamp</th><th>Provider</th><th>Experiment</th><th>Model</th><th>Dataset / Split</th><th>Overall Acc</th><th>Macro F1</th><th>Failures</th><th>Per-label metrics</th><th>Run Dir</th></tr>
 <tr>
@@ -322,6 +322,50 @@
 </table>
 </details></td>
 <td class='run-dir'>all_at_once/local/gpt-oss-120b/runs/2025-11-30T052529Z_ollama_gpt-oss-120b_all_at_once_split_v1_seed42/02_outputs</td>
+</tr>
+<tr>
+<td>2025-12-12T061936Z</td>
+<td><span class='badge small'>openai</span></td>
+<td><span class='badge'>all_at_once</span></td>
+<td class='model-cell'>gpt-5.2-2025-12-11</td>
+<td><span class='muted'>datasets/yt_factlink/01_conversion/03_splits/split_v1_seed42/test.data.jsonl</span></td>
+<td><span class='metric-good'>0.888</span></td>
+<td><span class='metric-bad'>0.449</span></td>
+<td>0</td>
+<td><details>
+<summary>Show per-label metrics</summary>
+<table class='perlabel-table'>
+<tr><th>Label</th><th>Acc</th><th>F1</th><th>Prec</th><th>Rec</th><th>TP</th><th>FP</th><th>TN</th><th>FN</th></tr>
+<tr><td>C1</td><td>0.727</td><td>0.632</td><td>0.900</td><td>0.486</td><td>18</td><td>2</td><td>38</td><td>19</td></tr>
+<tr><td>C2</td><td>0.870</td><td>0.706</td><td>0.706</td><td>0.706</td><td>12</td><td>5</td><td>55</td><td>5</td></tr>
+<tr><td>C3</td><td>0.883</td><td>0.182</td><td>0.250</td><td>0.143</td><td>1</td><td>3</td><td>67</td><td>6</td></tr>
+<tr><td>C4</td><td>0.961</td><td>0.727</td><td>0.571</td><td>1.000</td><td>4</td><td>3</td><td>70</td><td>0</td></tr>
+<tr><td>C6</td><td>1.000</td><td>0.000</td><td>0.000</td><td>0.000</td><td>0</td><td>0</td><td>77</td><td>0</td></tr>
+</table>
+</details></td>
+<td class='run-dir'>all_at_once/openai/gpt-5.2-2025-12-11/runs/2025-12-12T061936Z_openai_gpt-5.2-2025-12-11_all_at_once_split_v1_seed42/02_outputs</td>
+</tr>
+<tr>
+<td>2025-12-12T062423Z</td>
+<td><span class='badge small'>openai</span></td>
+<td><span class='badge'>all_at_once</span></td>
+<td class='model-cell'>gpt-5-2025-08-07</td>
+<td><span class='muted'>datasets/yt_factlink/01_conversion/03_splits/split_v1_seed42/test.data.jsonl</span></td>
+<td><span class='metric-good'>0.899</span></td>
+<td><span class='metric-bad'>0.475</span></td>
+<td>0</td>
+<td><details>
+<summary>Show per-label metrics</summary>
+<table class='perlabel-table'>
+<tr><th>Label</th><th>Acc</th><th>F1</th><th>Prec</th><th>Rec</th><th>TP</th><th>FP</th><th>TN</th><th>FN</th></tr>
+<tr><td>C1</td><td>0.766</td><td>0.719</td><td>0.852</td><td>0.622</td><td>23</td><td>4</td><td>36</td><td>14</td></tr>
+<tr><td>C2</td><td>0.909</td><td>0.821</td><td>0.727</td><td>0.941</td><td>16</td><td>6</td><td>54</td><td>1</td></tr>
+<tr><td>C3</td><td>0.896</td><td>0.333</td><td>0.400</td><td>0.286</td><td>2</td><td>3</td><td>67</td><td>5</td></tr>
+<tr><td>C4</td><td>0.922</td><td>0.500</td><td>0.375</td><td>0.750</td><td>3</td><td>5</td><td>68</td><td>1</td></tr>
+<tr><td>C6</td><td>1.000</td><td>0.000</td><td>0.000</td><td>0.000</td><td>0</td><td>0</td><td>77</td><td>0</td></tr>
+</table>
+</details></td>
+<td class='run-dir'>all_at_once/openai/gpt-5-2025-08-07/runs/2025-12-12T062423Z_openai_gpt-5-2025-08-07_all_at_once_split_v1_seed42/02_outputs</td>
 </tr>
 </table>
 </body></html>
