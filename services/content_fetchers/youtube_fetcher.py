@@ -62,6 +62,7 @@ class YouTubeFetcher(ContentFetcher):
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
+            "--ignore-no-formats-error",
             "--cookies-from-browser",
             "chrome",  # Authenticate via Chrome session
             "--write-comments",
@@ -287,6 +288,7 @@ class YouTubeFetcher(ContentFetcher):
             "yt-dlp",
             "--skip-download",
             "--write-info-json",
+            "--ignore-no-formats-error",
             "--cookies-from-browser",
             "chrome",
             "--write-comments",
