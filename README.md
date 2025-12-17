@@ -181,10 +181,10 @@ This branch isolates all resources required for systematic accuracy evaluation a
     │ │ └── manual_labels_386_v2.data.jsonl
     │ │
     │ └── 03_splits/                                                Train/test splits with fixed seeds
-    │   ├── split_v1_seed42/
-    │   ├── split_manifest.json
-    │   ├── train.data.jsonl
-    │   └── test.data.jsonl
+    │   └── split_v1_seed42/
+    │     ├── split_manifest.json
+    │     ├── train.data.jsonl
+    │     └── test.data.jsonl
     |
     ├── 02_prompts/                                                 Prompt templates for experiments
     │ ├── all_at_once/                                              Single-pass multi-label prompts
@@ -256,10 +256,10 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
     │ │ └── manual_labels_386_v2.data.jsonl
     | |
     │ └── 03_splits/                                                Train/test splits with fixed seeds
-    │   ├── split_v1_seed42/
-    │   ├── split_manifest.json
-    │   ├── train.data.jsonl
-    │   └── test.data.jsonl
+    │   └── split_v1_seed42/
+    │     ├── split_manifest.json
+    │     ├── train.data.jsonl
+    │     └── test.data.jsonl
     |
     ├── 02_prompts/                                                 Prompt templates for experiments
     │ ├── all_at_once/                                              Single-pass multi-label prompts
