@@ -1,8 +1,3 @@
-# Public Opinion Analyzer for YouTube Comments
-(Capstone Project – FactLink)
-
----
-
 ## Project Title
 
 Public Opinion Analyzer AI  
@@ -14,7 +9,9 @@ Automated Sociolinguistic Classification of YouTube Comments using Large Languag
 
 This project implements a Python-based analysis platform that automatically classifies YouTube comments according to a predefined sociolinguistic labeling framework. The primary use case is the analysis of public opinion and discourse patterns in politically or socially relevant YouTube videos.
 
-The system ingests YouTube video links, retrieves comments, enriches them with contextual video summaries, and applies multiple Large Language Models (LLMs) to perform structured, multi-label classification. Outputs are strictly schema-enforced JSON and exported as XLSX files for further statistical analysis.
+The system ingests YouTube video links, retrieves comments, enriches them with contextual video summaries, and applies multiple Large Language Models (LLMs) to perform structured, multi-label classification. Outputs are exported as XLSX files for further statistical analysis.
+
+In addition to the interactive application, the repository contains separate experimental branches dedicated to systematic accuracy evaluation and supervised fine-tuning. These branches isolate datasets, prompts, configurations, and evaluation logic to enable reproducible comparison of models and prompt variants, as well as controlled assessment of fine-tuning effects.
 
 The project addresses the scalability and reproducibility problems of manual discourse analysis by providing a configurable, model-agnostic analysis pipeline.
 
@@ -60,7 +57,7 @@ NOTE: This project is still a prototype and various issues still exist and certa
 
 ### Main / Dev Branch (Application Code)
 
-This branch contains the full application codebase, UI, and runtime logic. It represents the actively developed version of the system and is the foundation for all experiments.
+This branch contains the full application codebase, UI, and runtime logic. It represents the actively developed version of the system and is the foundation for the PublicOpinionAnalyzer App.
 
 ```text
 .
@@ -163,7 +160,7 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 
 ### experiment-accuracy Branch (Evaluation & Metrics)
 
-This branch isolates all resources required for systematic accuracy evaluation against manually labeled ground truth data. No UI logic is modified in this branch; changes focus on reproducible evaluation.
+This branch isolates all resources required for systematic accuracy evaluation against manually labeled ground truth data.
 
 ```text
 .
@@ -174,11 +171,14 @@ This branch isolates all resources required for systematic accuracy evaluation a
     │ └── (original XLSX/CSV, labeling notes)
     |
     ├── 01_conversion/                                              Data conversion to JSONL
+    │ │
     │ ├── 01_scripts/                                               Conversion notebooks and helpers
     │ │ ├── create_splits.ipynb
     │ │ └── xlsx_to_data_jsonl.ipynb
+    │ │
     │ ├── 02_outputs/                                               Converted artifacts (JSONL)
     │ │ └── manual_labels_386_v2.data.jsonl
+    │ │
     │ └── 03_splits/                                                Train/test splits with fixed seeds
     │   ├── split_v1_seed42/
     │   ├── split_manifest.json
@@ -190,44 +190,46 @@ This branch isolates all resources required for systematic accuracy evaluation a
     │ │ ├── system.txt
     │ │ └── user.txt
     │ └── single_class/                                             Per-class prompt variants
-    │ ├── C1/                                                       Class 1 prompt
-    │ │ ├── system.txt
-    │ │ └── user.txt
-    │ ├── C2/
-    │ ├── C3/
-    │ ├── C4/
-    │ └── C6/
+    │   ├── C1/                                                     Class 1 prompt
+    │   │ ├── system.txt
+    │   │ └── user.txt
+    │   ├── C2/
+    │   ├── C3/
+    │   ├── C4/
+    │   └── C6/
     │
     └── 03_accuracy_testing/                                        Evaluation runs and metrics
       ├──accuracy_overview.html                                     Summary of evaluation runs
-      └──summarize_accuracy_runs.py                                 Aggregation and reporting script
+      ├──summarize_accuracy_runs.py                                 Aggregation and reporting script
       ├── all_at_once/                                              Multi-label in one pass
       │ ├── local/                                                  Local models (LM Studio/Ollama)
       │ │ └── deepseek-llm-7b/
-      │ │ └── runs/                                                 Example run outputs
+      │ │   └── runs/                                               
       │ └── openai/                                                 OpenAI models
       │  ├── run_accuracy.ipynb                                     Provider-specific run_accuracy.ipynb notebook
       │  └── gpt-5-2025-08-07/                                      Example model folder
-      │    └── runs/                                                  Timestamped run directories
+      │    └── runs/                                                Timestamped run directories
       │      ├── .gitkeep
       │      └── 2025-12-12T062423Z_openai_gpt-5-2025-08-07_all_at_once_split_v1_seed42/
-      │        ├── 01_inputs/                                             Prompt and evaluation inputs
+      │        │
+      │        ├── 01_inputs/                                       Prompt and evaluation inputs
       │        │ ├── system.txt
       │        │ ├── user.txt
       │        │ └── eval_file.txt
-      │        ├── 02_outputs/                                            Run artifacts and predictions
-      │        │ ├── metrics.json                                         Aggregate metrics (e.g., accuracy/F1)
-      │        │ ├── run_config.json                                      Model/run configuration snapshot
-      │        │ └── preds.jsonl                                          Model predictions for test set
-      │        ├── 03_snapshots/                                          Reference notebook and snapshots
-      │        │ └── run_accuracy.ipynb                                   Snapshot of run_accuracy.ipynb that was onces for that run
+      │        │
+      │        ├── 02_outputs/                                      Run artifacts and predictions
+      │        │ ├── metrics.json                                   Aggregate metrics (e.g., accuracy/F1)
+      │        │ ├── run_config.json                                Model/run configuration snapshot
+      │        │ └── preds.jsonl                                    Model predictions for test set
+      │        │
+      │        ├── 03_snapshots/                                    Reference notebook and snapshots
+      │        │ └── run_accuracy.ipynb                             Snapshot of run_accuracy.ipynb that was onces for that run
       │        └── .gitkeep
       └── single_class/                                             Per-class evaluations
            ├── google/
            └── openai/
 ```
 
-This branch ensures that evaluation results are reproducible and comparable across models and prompt versions.
 
 ---
 
@@ -277,13 +279,16 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
       │    └── runs/                                                Timestamped run directories
       │      ├── .gitkeep
       │      └── 2025-11-28_070538_openai_gpt-4.1-2025-04-14_all_at_once_split_v1_seed42/
+      │        │
       │        ├── 01_inputs/                                       Prompt and evaluation inputs
       │        │ ├── system.txt
       │        │ ├── user.txt
       │        │ └── train.openai.jsonl                             Training file for OpenAI API
+      │        │
       │        ├── 02_outputs/                                      Run artifacts and predictions
       │        │ ├── job.json                                       job info
       │        │ └── model_id.txt                                   model_id
+      │        │
       │        ├── 03_snapshots/                                    Reference notebook and snapshots
       │        │ └── run_finetune_snapshot.ipynb                    Snapshot of run_finetune.ipynb that was onces for that run
       │        └── .gitkeep
@@ -292,7 +297,12 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
            └── openai/
 ```
 
-Fine-tuning results are compared against base model performance using the same evaluation pipeline to ensure fair comparison.
+
+---
+
+### poster Branch
+
+Contains the project poster.
 
 
 ---
@@ -310,7 +320,6 @@ The dev branch implements the full end-to-end analysis pipeline used by the inte
 5. Strict JSON validation using Pydantic schemas.
 6. Export of structured results as XLSX files for external analysis.
 
-This branch focuses on correctness, modularity, and usability rather than quantitative evaluation.
 
 ---
 
@@ -326,6 +335,7 @@ The experiment-accuracy branch isolates the evaluation logic to assess model per
 
 All evaluation steps are designed to be reproducible and comparable across experiments.
 
+
 ---
 
 ### experiment-finetuning Branch (Training Pipeline)
@@ -339,37 +349,34 @@ The experiment-finetuning branch extends the evaluation pipeline with supervised
 
 This ensures fair comparison between base models and fine-tuned models.
 
+
 ---
 
 ## Results
 
 ### Dev Branch (Functional Outcomes)
 
-- The application reliably enforces structured JSON outputs across different LLM providers.
 - The modular architecture allows flexible configuration of prompts, classification groups, and models.
 - Results can be exported in a consistent format suitable for downstream statistical analysis.
 
-These outcomes validate the system design and practical usability of the application.
 
 ---
 
 ### experiment-accuracy Branch (Quantitative Evaluation)
 
-- Model performance varies significantly across labels, particularly for low-frequency categories.
-- Overall accuracy can be misleading in imbalanced settings; macro F1 provides a more informative measure.
-- Certain labels exhibit high true-negative rates but low recall, highlighting class imbalance effects.
+- Strong base models from advanced providers already achieve high overall accuracy on the dataset.
+- However, in the presence of class imbalance, accuracy alone overestimates performance and masks weaknesses in minority labels.
+- Macro F1 and label-wise metrics reveal substantial variation across categories.
 
-These findings demonstrate the necessity of label-wise and macro-level evaluation.
 
 ---
 
 ### experiment-finetuning Branch (Training Effects)
 
 - Fine-tuning improves schema adherence and output consistency.
-- Moderate gains are observed for some labels, while others remain data-limited.
-- The small dataset size (386 manually labeled comments) constrains achievable improvements.
-
-Overall, fine-tuning provides incremental benefits but does not fully overcome data sparsity.
+- A fine-tuned GPT-4.1 model shows a slight improvement in accuracy compared to its base version.
+- Gains are label-dependent; some categories benefit modestly, while others remain constrained by limited training data.
+- The small dataset size (386 manually labeled comments) limits the magnitude of achievable improvements.
 
 
 ---
@@ -385,23 +392,24 @@ Support with project development, accuracy testing, and fine-tuning
 陳秋天 Ratchadaporn Leungphetngam  
 Prompt design, accuracy testing, fine-tuning, and poster design
 
+包承翰 Marc Bustamante  
+Labeling framework design, prompt design, accuracy testing, and fine-tuning
+
 翟苡薰 Zoe Chai  
 Manual labeling and accuracy testing
 
 陳以勤 Yi-Qin Chen  
 Manual labeling and accuracy testing
 
-包承翰 Marc Bustamante  
-Labeling framework design, prompt design, accuracy testing, and fine-tuning
-
 
 ---
 
 ## Acknowledgments
 
-FactLink – Project partner and problem provider  
+FactLink and I– Project partner and problem provider  
 National Chengchi University (NCCU) – Academic supervision by Chung-pei Pien
 Open-source contributors of LangChain, LangGraph, Gradio, and yt-dlp
+
 
 ---
 
