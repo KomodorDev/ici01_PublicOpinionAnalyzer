@@ -114,8 +114,7 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │ ├── analysis_view.py
 │ ├── classification_view.py
 │ ├── prompt_template_view.py
-│ ├── settings_view.py
-│ └── shared_components.py
+│ └── settings_view.py
 │
 ├── enums/                                                          Shared enumerations
 │ ├── classification_output_enum.py
