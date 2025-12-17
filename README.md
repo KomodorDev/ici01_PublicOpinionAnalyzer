@@ -51,7 +51,7 @@ NOTE: This project is still in prototype-stage and various issues still exist an
 5. Start the application:
    python main.py
 
-6. Open IP Adress provided in terminal
+6. Open IP Address provided in terminal
 
 ---
 
