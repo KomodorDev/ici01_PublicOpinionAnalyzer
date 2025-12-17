@@ -162,19 +162,49 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 
 This branch isolates all resources required for systematic accuracy evaluation against manually labeled ground truth data. No UI logic is modified in this branch; changes focus on reproducible evaluation.
 
-datasets/
-├── yt_factlink/
-│ ├── 00_base_data/                                                 Manually labeled comments (Excel / JSON)
-│ ├── 01_conversion/                                                Converted JSONL datasets
-│ ├── 02_prompts/                                                   Prompt variants used for evaluation
-│ └── 03_splits/                                                    Train/test splits with fixed random seeds
-│
-experiments/
-├── accuracy_testing/
-│ ├── run_configs/                                                  Model and prompt configurations per run
-│ ├── predictions/                                                  Raw model outputs (JSON)
-│ ├── metrics/                                                      Per-label and macro metrics (accuracy, F1)
-│ └── summarize_results.py                                          Aggregation and reporting logic
+.
+├── datasets/                                                        Research datasets and evaluation assets
+│ └── yt_factlink/                                                   FactLink yt dataset
+│ ├── 00_base_data/                                                  Manually labeled source data
+│ │ └── (original XLSX/CSV, labeling notes)
+│ ├── 01_conversion/                                                 Data conversion to JSONL
+│ │ ├── 01_scripts/                                                  Conversion notebooks and helpers
+│ │ │ ├── create_splits.ipynb
+│ │ │ └── xlsx_to_data_jsonl.ipynb
+│ │ └── 02_outputs/                                                  Converted artifacts (JSONL)
+│ │ └── manual_labels_386_v2.data.jsonl
+│ ├── 02_prompts/                                                    Prompt templates for experiments
+│ │ ├── all_at_once/                                                 Single-pass multi-label prompts
+│ │ │ ├── system.txt
+│ │ │ └── user.txt
+│ │ └── single_class/                                                Per-class prompt variants
+│ │ ├── C1/                                                          Class 1 prompt
+│ │ │ ├── system.txt
+│ │ │ └── user.txt
+│ │ ├── C2/
+│ │ ├── C3/
+│ │ ├── C4/
+│ │ └── C6/
+│ ├── 03_splits/                                                     Train/test splits with fixed seeds
+│ │ └── split_v1_seed42/
+│ │ ├── split_manifest.json
+│ │ ├── train.data.jsonl
+│ │ └── test.data.jsonl
+│ └── 03_accuracy_testing/                                           Evaluation runs and metrics
+│ ├── accuracy_overview.html                                         Summary of evaluation runs
+│ ├── summarize_accuracy_runs.py                                     Aggregation and reporting script
+│ ├── all_at_once/                                                   Multi-label in one pass
+│ │ ├── local/                                                       Local models (LM Studio/Ollama)
+│ │ │ └── deepseek-llm-7b/
+│ │ │ └── runs/                                                      Example run outputs
+│ │ └── openai/                                                      OpenAI models
+│ │ ├── run_accuracy.ipynb
+│ │ └── gpt-5-2025-08-07/                                            Example model folder
+│ │ └── runs/                                                        One illustrative run directory
+│ └── single_class/                                                  Per-class evaluations
+│ ├── google/
+│ └── openai/
+│ └── run_accuracy.ipynb
 
 This branch ensures that evaluation results are reproducible and comparable across models and prompt versions.
 
