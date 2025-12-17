@@ -1,7 +1,6 @@
 ## Project Title
 
 Public Opinion Analyzer AI  
-Automated Sociolinguistic Classification of YouTube Comments using Large Language Models
 
 ---
 
