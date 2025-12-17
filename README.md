@@ -398,7 +398,7 @@ Support with project development, accuracy testing, and fine-tuning
 Prompt design, accuracy testing, fine-tuning, and poster design
 
 包承翰 Marc Bustamante  
-Labeling framework design, prompt design, accuracy testing, and fine-tuning
+Labeling framework, prompt design, accuracy testing, and fine-tuning
 
 翟苡薰 Zoe Chai  
 Manual labeling and accuracy testing
