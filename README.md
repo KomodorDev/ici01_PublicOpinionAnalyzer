@@ -62,6 +62,7 @@ NOTE: This project is still a prototype and various issues still exist and certa
 
 This branch contains the full application codebase, UI, and runtime logic. It represents the actively developed version of the system and is the foundation for all experiments.
 
+```text
 .
 ├── controllers/                                                    High-level orchestration logic
 │ ├── analysis_controller.py                                        Analysis flows (end-to-end runs)
@@ -80,8 +81,8 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │ │ ├── google_provider.py
 │ │ └── lmstudio_provider.py
 │ └── video_analysis/                                               Video metadata/summary adapters
-│ ├── base_adapter.py
-│ └── google_adapter.py
+│   ├── base_adapter.py
+│   └── google_adapter.py
 │
 ├── models/                                                         Domain and view models
 │ ├── domain/                                                       Core entities (videos, comments, labels)
@@ -96,10 +97,10 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │ │ ├── prompt_template_model.py
 │ │ └── video_model_info_model.py
 │ └── view_models/                                                  UI-facing models
-│ ├── analysis/
-│ ├── classification/
-│ ├── prompt_template/
-│ └── settings/
+│   ├── analysis/
+│   ├── classification/
+│   ├── prompt_template/
+│   └── settings/
 │
 ├── repositories/                                                   Data access (prompt templates, classifications)
 │ ├── classification_repository.py
@@ -144,9 +145,9 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │
 ├── Content_Archive/                                                Archived raw content
 │ └── youtube/
-│ ├── _temp/
-│ ├── Outcast_UCcJIrU7TjidDiYnRWaMZ1hQ/
-│ └── Conscious Awakening_UCkIXApx-EwR5RkUbqWPK77Q/
+│   ├── _temp/
+│   ├── Outcast_UCcJIrU7TjidDiYnRWaMZ1hQ/
+│   └── Conscious Awakening_UCkIXApx-EwR5RkUbqWPK77Q/
 │
 ├── exports/                                                        Generated outputs
 │ └── youtube/
@@ -157,54 +158,75 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 ├── requirements.txt                                                Runtime dependencies
 ├── requirements-dev.txt                                            Dev/test tooling
 └── README.md                                                       Project overview and usage
+│
+.
+```text
+
 
 ### experiment-accuracy Branch (Evaluation & Metrics)
 
 This branch isolates all resources required for systematic accuracy evaluation against manually labeled ground truth data. No UI logic is modified in this branch; changes focus on reproducible evaluation.
 
 .
-├── datasets/                                                        Research datasets and evaluation assets
-│ └── yt_factlink/                                                   FactLink yt dataset
-│ ├── 00_base_data/                                                  Manually labeled source data
-│ │ └── (original XLSX/CSV, labeling notes)
-│ ├── 01_conversion/                                                 Data conversion to JSONL
-│ │ ├── 01_scripts/                                                  Conversion notebooks and helpers
-│ │ │ ├── create_splits.ipynb
-│ │ │ └── xlsx_to_data_jsonl.ipynb
-│ │ └── 02_outputs/                                                  Converted artifacts (JSONL)
-│ │ └── manual_labels_386_v2.data.jsonl
-│ ├── 02_prompts/                                                    Prompt templates for experiments
-│ │ ├── all_at_once/                                                 Single-pass multi-label prompts
-│ │ │ ├── system.txt
-│ │ │ └── user.txt
-│ │ └── single_class/                                                Per-class prompt variants
-│ │ ├── C1/                                                          Class 1 prompt
-│ │ │ ├── system.txt
-│ │ │ └── user.txt
-│ │ ├── C2/
-│ │ ├── C3/
-│ │ ├── C4/
-│ │ └── C6/
-│ ├── 03_splits/                                                     Train/test splits with fixed seeds
-│ │ └── split_v1_seed42/
-│ │ ├── split_manifest.json
-│ │ ├── train.data.jsonl
-│ │ └── test.data.jsonl
-│ └── 03_accuracy_testing/                                           Evaluation runs and metrics
-│ ├── accuracy_overview.html                                         Summary of evaluation runs
-│ ├── summarize_accuracy_runs.py                                     Aggregation and reporting script
-│ ├── all_at_once/                                                   Multi-label in one pass
-│ │ ├── local/                                                       Local models (LM Studio/Ollama)
-│ │ │ └── deepseek-llm-7b/
-│ │ │ └── runs/                                                      Example run outputs
-│ │ └── openai/                                                      OpenAI models
-│ │ ├── run_accuracy.ipynb
-│ │ └── gpt-5-2025-08-07/                                            Example model folder
-│ │ └── runs/                                                        One illustrative run directory
-│ └── single_class/                                                  Per-class evaluations
-│ ├── google/
-│ └── openai/
-│ └── run_accuracy.ipynb
+└── datasets/                                                       Research datasets and evaluation assets
+  └── yt_factlink/                                                  FactLink yt dataset
+    |                                               
+    ├── 00_base_data/                                               Manually labeled source data
+    │ └── (original XLSX/CSV, labeling notes)
+    |
+    ├── 01_conversion/                                              Data conversion to JSONL
+    │ ├── 01_scripts/                                               Conversion notebooks and helpers
+    │ │ ├── create_splits.ipynb
+    │ │ └── xlsx_to_data_jsonl.ipynb
+    │ ├── 02_outputs/                                                  Converted artifacts (JSONL)
+    │ │ └── manual_labels_386_v2.data.jsonl
+    │ └── 03_splits/                                                     Train/test splits with fixed seeds
+    │   ├── split_v1_seed42/
+    │   ├── split_manifest.json
+    │   ├── train.data.jsonl
+    │   └── test.data.jsonl
+    |
+    ├── 02_prompts/                                                    Prompt templates for experiments
+    │ ├── all_at_once/                                                 Single-pass multi-label prompts
+    │ │ ├── system.txt
+    │ │ └── user.txt
+    │ └── single_class/                                                Per-class prompt variants
+    │ ├── C1/                                                          Class 1 prompt
+    │ │ ├── system.txt
+    │ │ └── user.txt
+    │ ├── C2/
+    │ ├── C3/
+    │ ├── C4/
+    │ └── C6/
+    │
+    └── 03_accuracy_testing/                                           Evaluation runs and metrics
+      ├──accuracy_overview.html                                         Summary of evaluation runs
+      └──summarize_accuracy_runs.py                                     Aggregation and reporting script
+      ├── all_at_once/                                                   Multi-label in one pass
+      │ ├── local/                                                       Local models (LM Studio/Ollama)
+      │ │ └── deepseek-llm-7b/
+      │ │ └── runs/                                                      Example run outputs
+      │ └── openai/                                                      OpenAI models
+      │  ├── run_accuracy.ipynb                                            Provider-specific run_accuracy.ipynb notebook
+      │  └── gpt-5-2025-08-07/                                            Example model folder
+      │  └── runs/                                                        Timestamped run directories
+      │  ├── .gitkeep
+      │  └── 2025-12-12T062423Z_openai_gpt-5-2025-08-07_all_at_once_split_v1_seed42/
+      │  ├── 01_inputs/                                                   Prompt and evaluation inputs
+      │  │ ├── system.txt
+      │  │ ├── user.txt
+      │  │ └── eval_file.txt
+      │  ├── 02_outputs/                                                  Run artifacts and predictions
+      │  │ ├── metrics.json                                               Aggregate metrics (e.g., accuracy/F1)
+      │  │ ├── run_config.json                                            Model/run configuration snapshot
+      │  │ └── preds.jsonl                                                Model predictions for test set
+      │  └── 03_snapshots/                                                Reference notebook and snapshots
+      │  │ └── run_accuracy.ipynb                                           Snapshot of run_accuracy.ipynb that was onces for that run
+      │  └── .gitkeep
+      └── single_class/                                                  Per-class evaluations
+           ├── google/
+           └── openai/
+.
 
 This branch ensures that evaluation results are reproducible and comparable across models and prompt versions.
 
