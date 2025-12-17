@@ -420,4 +420,6 @@ Open-source contributors of LangChain, LangGraph, Gradio, and yt-dlp
 
 ## References
 
+[Sentiment Analysis in the Era of Large Language Models: A Reality Check](https://aclanthology.org/2024.findings-naacl.246/) (Zhang et al., Findings 2024)
+
 -
