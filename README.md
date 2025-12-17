@@ -302,9 +302,9 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
 
 ---
 
-### poster Branch
+### docs Branch
 
-Contains the project poster.
+Contains supporting documents e.g. labelling framework, prompt, and poster.
 
 
 ---
