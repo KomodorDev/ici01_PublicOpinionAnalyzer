@@ -370,7 +370,6 @@ This ensures fair comparison between base models and fine-tuned models.
 
 - Strong base models from advanced providers already achieve high overall accuracy on the dataset.
 - However, in the presence of class imbalance, accuracy alone overestimates performance and masks weaknesses in minority labels.
-- Macro F1 and label-wise metrics reveal substantial variation across categories.
 
 
 ---
@@ -411,7 +410,9 @@ Manual labeling and accuracy testing
 ## Acknowledgments
 
 FactLink and NICS – Project partner, problem provider, and support
+
 National Chengchi University (NCCU) – Academic supervision by Chung-pei Pien
+
 Open-source contributors of LangChain, LangGraph, Gradio, and yt-dlp
 
 
