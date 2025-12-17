@@ -347,7 +347,7 @@ The experiment-finetuning branch extends the evaluation pipeline with supervised
 1. Preparation of training and test datasets in provider-specific JSONL formats.
 2. Execution of supervised fine-tuning jobs using manually labeled data.
 3. Logging of training progress and validation results.
-4. Post-training evaluation using the same metric pipeline as the accuracy branch.
+4. Post-training evaluation happens in experiment-accuracy branch
 
 This ensures fair comparison between base models and fine-tuned models.
 
@@ -408,7 +408,7 @@ Manual labeling and accuracy testing
 
 ## Acknowledgments
 
-FactLink and I– Project partner and problem provider  
+FactLink and NICS – Project partner, problem provider, and support
 National Chengchi University (NCCU) – Academic supervision by Chung-pei Pien
 Open-source contributors of LangChain, LangGraph, Gradio, and yt-dlp
 
