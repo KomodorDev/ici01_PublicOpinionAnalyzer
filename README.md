@@ -41,10 +41,13 @@ NOTE: This project is still a prototype and various issues still exist and certa
 3. Install dependencies:
    pip install -r requirements.txt
 
-4. Create a .env file and configure API key (or alternatively insert API key in "Settings" tab):
+4. Create a .env file and configure API key:
    OPENAI_API_KEY=...
    GEMINI_API_KEY=...
-   OLLAMA_BASE_URL=...
+
+   (or alternatively insert API key in "Settings" tab):
+
+   Note: At lest a Gemini API Key is required. Otherwise the Analysis Tab as of now will crash.
 
 5. Start the application:
    python main.py
