@@ -14,7 +14,7 @@ In addition to the interactive application, the repository contains separate exp
 
 The project addresses the scalability and reproducibility problems of manual discourse analysis by providing a configurable, model-agnostic analysis pipeline.
 
-NOTE: This project is still a prototype and various issues still exist and certain features are not implemented yet.
+NOTE: This project is still in prototype-stage and various issues still exist and certain features are not implemented yet.
 
 ---
 
