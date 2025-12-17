@@ -14,6 +14,7 @@ import requests
 from enums import ProviderEnum
 from models.domain import LLMModelInfo
 from services.model_providers.base_provider import ModelProvider
+from langchain_core.language_models.chat_models import BaseChatModel
 
 
 ##################################################################
@@ -221,6 +222,18 @@ def main():
             temperature=0.0,  # Deterministic for testing
             max_tokens=10
         )
+        
+        # -----------------------------------------
+        # INTERFACE CHECK: BaseChatModel
+        # -----------------------------------------
+        if not isinstance(client, BaseChatModel):
+            raise TypeError(
+                "create_llm_client() returned an invalid type.\n"
+                f"Expected BaseChatModel, got {type(client)} instead.\n"
+                "LangChain API may have changed or provider is misconfigured."
+            )
+
+        print("✅ Client implements BaseChatModel")
 
         # -----------------------------------------
         # DEBUG: Print all attributes of the client
