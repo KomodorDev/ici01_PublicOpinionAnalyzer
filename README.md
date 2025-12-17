@@ -158,8 +158,6 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 ├── requirements.txt                                                Runtime dependencies
 ├── requirements-dev.txt                                            Dev/test tooling
 └── README.md                                                       Project overview and usage
-│
-.
 ```
 
 
@@ -167,6 +165,7 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 
 This branch isolates all resources required for systematic accuracy evaluation against manually labeled ground truth data. No UI logic is modified in this branch; changes focus on reproducible evaluation.
 
+```text
 .
 └── datasets/                                                       Research datasets and evaluation assets
   └── yt_factlink/                                                  FactLink yt dataset
@@ -178,20 +177,20 @@ This branch isolates all resources required for systematic accuracy evaluation a
     │ ├── 01_scripts/                                               Conversion notebooks and helpers
     │ │ ├── create_splits.ipynb
     │ │ └── xlsx_to_data_jsonl.ipynb
-    │ ├── 02_outputs/                                                  Converted artifacts (JSONL)
+    │ ├── 02_outputs/                                               Converted artifacts (JSONL)
     │ │ └── manual_labels_386_v2.data.jsonl
-    │ └── 03_splits/                                                     Train/test splits with fixed seeds
+    │ └── 03_splits/                                                Train/test splits with fixed seeds
     │   ├── split_v1_seed42/
     │   ├── split_manifest.json
     │   ├── train.data.jsonl
     │   └── test.data.jsonl
     |
-    ├── 02_prompts/                                                    Prompt templates for experiments
-    │ ├── all_at_once/                                                 Single-pass multi-label prompts
+    ├── 02_prompts/                                                 Prompt templates for experiments
+    │ ├── all_at_once/                                              Single-pass multi-label prompts
     │ │ ├── system.txt
     │ │ └── user.txt
-    │ └── single_class/                                                Per-class prompt variants
-    │ ├── C1/                                                          Class 1 prompt
+    │ └── single_class/                                             Per-class prompt variants
+    │ ├── C1/                                                       Class 1 prompt
     │ │ ├── system.txt
     │ │ └── user.txt
     │ ├── C2/
@@ -199,34 +198,34 @@ This branch isolates all resources required for systematic accuracy evaluation a
     │ ├── C4/
     │ └── C6/
     │
-    └── 03_accuracy_testing/                                           Evaluation runs and metrics
-      ├──accuracy_overview.html                                         Summary of evaluation runs
-      └──summarize_accuracy_runs.py                                     Aggregation and reporting script
-      ├── all_at_once/                                                   Multi-label in one pass
-      │ ├── local/                                                       Local models (LM Studio/Ollama)
+    └── 03_accuracy_testing/                                        Evaluation runs and metrics
+      ├──accuracy_overview.html                                     Summary of evaluation runs
+      └──summarize_accuracy_runs.py                                 Aggregation and reporting script
+      ├── all_at_once/                                              Multi-label in one pass
+      │ ├── local/                                                  Local models (LM Studio/Ollama)
       │ │ └── deepseek-llm-7b/
-      │ │ └── runs/                                                      Example run outputs
-      │ └── openai/                                                      OpenAI models
-      │  ├── run_accuracy.ipynb                                            Provider-specific run_accuracy.ipynb notebook
-      │  └── gpt-5-2025-08-07/                                            Example model folder
-      │  └── runs/                                                        Timestamped run directories
-      │  ├── .gitkeep
-      │  └── 2025-12-12T062423Z_openai_gpt-5-2025-08-07_all_at_once_split_v1_seed42/
-      │  ├── 01_inputs/                                                   Prompt and evaluation inputs
-      │  │ ├── system.txt
-      │  │ ├── user.txt
-      │  │ └── eval_file.txt
-      │  ├── 02_outputs/                                                  Run artifacts and predictions
-      │  │ ├── metrics.json                                               Aggregate metrics (e.g., accuracy/F1)
-      │  │ ├── run_config.json                                            Model/run configuration snapshot
-      │  │ └── preds.jsonl                                                Model predictions for test set
-      │  └── 03_snapshots/                                                Reference notebook and snapshots
-      │  │ └── run_accuracy.ipynb                                           Snapshot of run_accuracy.ipynb that was onces for that run
-      │  └── .gitkeep
-      └── single_class/                                                  Per-class evaluations
+      │ │ └── runs/                                                 Example run outputs
+      │ └── openai/                                                 OpenAI models
+      │  ├── run_accuracy.ipynb                                     Provider-specific run_accuracy.ipynb notebook
+      │  └── gpt-5-2025-08-07/                                      Example model folder
+      │    └── runs/                                                  Timestamped run directories
+      │      ├── .gitkeep
+      │      └── 2025-12-12T062423Z_openai_gpt-5-2025-08-07_all_at_once_split_v1_seed42/
+      │        ├── 01_inputs/                                             Prompt and evaluation inputs
+      │        │ ├── system.txt
+      │        │ ├── user.txt
+      │        │ └── eval_file.txt
+      │        ├── 02_outputs/                                            Run artifacts and predictions
+      │        │ ├── metrics.json                                         Aggregate metrics (e.g., accuracy/F1)
+      │        │ ├── run_config.json                                      Model/run configuration snapshot
+      │        │ └── preds.jsonl                                          Model predictions for test set
+      │        ├── 03_snapshots/                                          Reference notebook and snapshots
+      │        │ └── run_accuracy.ipynb                                   Snapshot of run_accuracy.ipynb that was onces for that run
+      │        └── .gitkeep
+      └── single_class/                                             Per-class evaluations
            ├── google/
            └── openai/
-.
+```
 
 This branch ensures that evaluation results are reproducible and comparable across models and prompt versions.
 
@@ -236,18 +235,62 @@ This branch ensures that evaluation results are reproducible and comparable acro
 
 This branch contains all artifacts required for supervised fine-tuning of LLMs using manually labeled YouTube comments. It builds directly on the dataset preparation from the accuracy branch.
 
-datasets/
-├── yt_factlink/
-│ ├── 01_conversion/
-│ │ ├── train.openai.jsonl                                          Training dataset
-│ │ └── test.openai.jsonl                                           Held-out evaluation dataset
-│
-experiments/
-├── finetuning/
-│ ├── configs/                                                      Fine-tuning hyperparameters
-│ ├── jobs/                                                         Fine-tuning job definitions
-│ ├── logs/                                                         Training and validation logs
-│ └── evaluations/                                                  Post-fine-tuning performance comparisons
+```text
+.
+└── datasets/                                                       Research datasets and evaluation assets
+  └── yt_factlink/                                                  FactLink yt dataset
+    |                                               
+    ├── 00_base_data/                                               Manually labeled source data
+    │ └── (original XLSX/CSV, labeling notes)
+    |
+    ├── 01_conversion/                                              Data conversion to JSONL
+    │ ├── 01_scripts/                                               Conversion notebooks and helpers
+    │ │ ├── create_splits.ipynb
+    │ │ └── xlsx_to_data_jsonl.ipynb
+    │ ├── 02_outputs/                                               Converted artifacts (JSONL)
+    │ │ └── manual_labels_386_v2.data.jsonl
+    │ └── 03_splits/                                                Train/test splits with fixed seeds
+    │   ├── split_v1_seed42/
+    │   ├── split_manifest.json
+    │   ├── train.data.jsonl
+    │   └── test.data.jsonl
+    |
+    ├── 02_prompts/                                                 Prompt templates for experiments
+    │ ├── all_at_once/                                              Single-pass multi-label prompts
+    │ │ ├── system.txt
+    │ │ └── user.txt
+    │ └── single_class/                                             Per-class prompt variants
+    │ ├── C1/                                                       Class 1 prompt
+    │ │ ├── system.txt
+    │ │ └── user.txt
+    │ ├── C2/
+    │ ├── C3/
+    │ ├── C4/
+    │ └── C6/
+    │
+    └── 03_finetuning/                                              Finetuning
+      ├── all_at_once/                                              Multi-label in one pass
+      │ ├── local/                                                  Local models (LM Studio/
+      │ └── openai/                                                 OpenAI models
+      │  ├── run_finetune.ipynb                                     Provider-specific run_accuracy.ipynb notebook
+      │  └── gpt-4.1-2025-04-14/                                    Example model folder
+      │    └── runs/                                                Timestamped run directories
+      │      ├── .gitkeep
+      │      └── 2025-11-28_070538_openai_gpt-4.1-2025-04-14_all_at_once_split_v1_seed42/
+      │        ├── 01_inputs/                                       Prompt and evaluation inputs
+      │        │ ├── system.txt
+      │        │ ├── user.txt
+      │        │ └── train.openai.jsonl                             Training file for OpenAI API
+      │        ├── 02_outputs/                                      Run artifacts and predictions
+      │        │ ├── job.json                                       job info
+      │        │ └── model_id.txt                                   model_id
+      │        ├── 03_snapshots/                                    Reference notebook and snapshots
+      │        │ └── run_finetune_snapshot.ipynb                    Snapshot of run_finetune.ipynb that was onces for that run
+      │        └── .gitkeep
+      └── single_class/                                             Per-class
+           ├── google/
+           └── openai/
+```
 
 Fine-tuning results are compared against base model performance using the same evaluation pipeline to ensure fair comparison.
 
