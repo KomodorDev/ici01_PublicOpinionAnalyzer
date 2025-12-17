@@ -137,7 +137,7 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │ │ ├── anti_china.json
 │ │ └── pro_taiwan.json
 │ └── Group_2/
-│ └── anti_china.json
+│   └── anti_china.json
 │
 ├── Content_Archive/                                                Archived raw content
 │ └── youtube/
@@ -245,11 +245,14 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
     │ └── (original XLSX/CSV, labeling notes)
     |
     ├── 01_conversion/                                              Data conversion to JSONL
+    | |
     │ ├── 01_scripts/                                               Conversion notebooks and helpers
     │ │ ├── create_splits.ipynb
     │ │ └── xlsx_to_data_jsonl.ipynb
+    | |
     │ ├── 02_outputs/                                               Converted artifacts (JSONL)
     │ │ └── manual_labels_386_v2.data.jsonl
+    | |
     │ └── 03_splits/                                                Train/test splits with fixed seeds
     │   ├── split_v1_seed42/
     │   ├── split_manifest.json
