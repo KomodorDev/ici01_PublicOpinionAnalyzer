@@ -224,7 +224,7 @@ This branch isolates all resources required for systematic accuracy evaluation a
       │        │ └── preds.jsonl                                    Model predictions for test set
       │        │
       │        ├── 03_snapshots/                                    Reference notebook and snapshots
-      │        │ └── run_accuracy.ipynb                             Snapshot of run_accuracy.ipynb that was onces for that run
+      │        │ └── run_accuracy.ipynb                             Snapshot of run_accuracy.ipynb that was used for that run
       │        └── .gitkeep
       └── single_class/                                             Per-class evaluations
            ├── google/
@@ -294,7 +294,7 @@ This branch contains all artifacts required for supervised fine-tuning of LLMs u
       │        │ └── model_id.txt                                   model_id
       │        │
       │        ├── 03_snapshots/                                    Reference notebook and snapshots
-      │        │ └── run_finetune_snapshot.ipynb                    Snapshot of run_finetune.ipynb that was onces for that run
+      │        │ └── run_finetune_snapshot.ipynb                    Snapshot of run_finetune.ipynb that was used for that run
       │        └── .gitkeep
       └── single_class/                                             Per-class
            ├── google/
