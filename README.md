@@ -141,15 +141,15 @@ This branch contains the full application codebase, UI, and runtime logic. It re
 │ └── Group_2/
 │   └── anti_china.json
 │
-├── Content_Archive/                                                Archived raw content
+├── Content_Archive/                                                Archived raw content - Local only
 │ └── youtube/
-│   ├── _temp/
-│   ├── Outcast_UCcJIrU7TjidDiYnRWaMZ1hQ/
-│   └── Conscious Awakening_UCkIXApx-EwR5RkUbqWPK77Q/
+│   └── _temp/
+│     ├── Outcast_UCcJIrU7TjidDiYnRWaMZ1hQ/
+│     └── Conscious Awakening_UCkIXApx-EwR5RkUbqWPK77Q/
 │
-├── exports/                                                        Generated outputs
+├── exports/                                                        Generated outputs - Local only
 │ └── youtube/
-│ └── Y0_XNg6-HkA/
+│   └── Y0_XNg6-HkA/
 │
 ├── config.py                                                       Application configuration
 ├── main.py                                                         Application entry point (Gradio UI)
@@ -321,7 +321,7 @@ The dev branch implements the full end-to-end analysis pipeline used by the inte
 2. Context enrichment via manual or LLM-generated video summaries.
 3. Runtime prompt construction using placeholders such as [VIDEOCONTEXT].
 4. Parallel classification with multiple LLM providers.
-5. Strict JSON validation using Pydantic schemas.
+5. Strict JSON validation.
 6. Export of structured results as XLSX files for external analysis.
 
 
